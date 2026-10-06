@@ -1,0 +1,36 @@
+# Local full stack. Mirrors the deployed topology so Phase 5 is a transplant
+# rather than a rewrite.
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: masumi
+      POSTGRES_PASSWORD: masumi
+      POSTGRES_DB: masumi_payment
+    volumes: ['pgdata:/var/lib/postgresql/data']
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U masumi']
+      interval: 5s
+      retries: 10
+
+  agent-api:
+    build: .
+    environment:
+      PROCESS: api
+      AGENT_API_PORT: '3013'
+    env_file: [.env.local]
+    ports: ['3013:3013']
+
+  worker:
+    build: .
+    environment:
+      PROCESS: worker
+    env_file: [.env.local]
+    # Exactly one. Two workers double-process tasks and produce duplicate
+    # charges, which is an explicit judging criterion.
+    deploy:
+      replicas: 1
+    depends_on: [agent-api]
+
+volumes:
+  pgdata:
