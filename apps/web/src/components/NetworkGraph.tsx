@@ -1,24 +1,29 @@
-import type { Feed, FeedEvent } from "@token-origins/schema";
-import { agentColor, TOKEN_COLOR } from "../lib/entities.ts";
+import { Bot, Building2, Lock, Phone, User } from "lucide-react";
+import { useEffect, useState } from "react";
+import type { Feed, FeedEvent, Job } from "@token-origins/schema";
+import { DISPATCH_COLOR, hirerColor, hirerOf, TOKEN_COLOR } from "../lib/entities.ts";
 import { formatAsset } from "../lib/format.ts";
 import type { Snapshot } from "../lib/replay.ts";
 
-// Fixed layout in a 760×440 viewBox. Producer rows line up with the experiences they publish.
-const ROWS: Record<string, number> = { agent_a: 100, agent_b: 210, agent_c: 320 };
-const PRODUCER_X = 455;
-const PRODUCER_R = 25;
-const EXP_X = 650;
-const CUSTOMER = { x: 70, y: 210 };
-const BROKER = { x: 255, y: 210, w: 132, h: 64 };
-const NETWORK = { x: 560, y: 22, w: 182, h: 398 };
-const ESCROW = { x: 420, y: 408 };
+// Fixed layout in a 760×420 viewBox: hirers left, escrow and Dispatch centre, called parties right.
+const LANES = [110, 300];
+const HIRER_X = 85;
+const PARTY_X = 675;
+const ESCROW = { x: 285, y: 205 };
+const DISPATCH = { x: 480, y: 205, r: 44 };
+const LEDGER = { x: 480, y: 382 };
+const REGISTRY = { x: 285, y: 38 };
+const NODE_W = 150;
+const NODE_H = 54;
 
-const PATHS = {
-  task: `M${CUSTOMER.x + 52} ${CUSTOMER.y} L${BROKER.x - BROKER.w / 2} ${BROKER.y}`,
-  search: `M${BROKER.x} ${BROKER.y + BROKER.h / 2} C ${BROKER.x} ${ESCROW.y}, 300 ${ESCROW.y}, 360 ${ESCROW.y} L ${NETWORK.x} ${ESCROW.y}`,
-  dispatch: (y: number) =>
-    `M${BROKER.x + BROKER.w / 2} ${BROKER.y} C 380 ${BROKER.y}, 380 ${y}, ${PRODUCER_X - PRODUCER_R} ${y}`,
-  publish: (y: number) => `M${PRODUCER_X + PRODUCER_R} ${y} L${EXP_X - 58} ${y}`,
+const paths = {
+  hirerToEscrow: (y: number) => `M${HIRER_X + NODE_W / 2} ${y} C 200 ${y}, 190 ${ESCROW.y}, ${ESCROW.x - 58} ${ESCROW.y}`,
+  hirerToDispatch: (y: number) =>
+    `M${HIRER_X + NODE_W / 2} ${y} C 200 ${y}, 190 ${ESCROW.y}, ${ESCROW.x - 58} ${ESCROW.y} L ${DISPATCH.x - DISPATCH.r} ${DISPATCH.y}`,
+  escrowToDispatch: `M${ESCROW.x + 58} ${ESCROW.y} L${DISPATCH.x - DISPATCH.r} ${DISPATCH.y}`,
+  dispatchToParty: (y: number) => `M${DISPATCH.x + DISPATCH.r} ${DISPATCH.y} C 570 ${DISPATCH.y}, 560 ${y}, ${PARTY_X - NODE_W / 2} ${y}`,
+  dispatchToLedger: `M${DISPATCH.x} ${DISPATCH.y + DISPATCH.r} L${LEDGER.x} ${LEDGER.y - 14}`,
+  hirerToRegistry: (y: number) => `M${HIRER_X} ${y - NODE_H / 2} C ${HIRER_X} 120, 150 ${REGISTRY.y}, ${REGISTRY.x - 62} ${REGISTRY.y}`,
 };
 
 interface Motion {
@@ -28,38 +33,34 @@ interface Motion {
   radius?: number;
 }
 
-/** Which particle(s) travel for the event that just happened. */
-function motionsFor(event: FeedEvent | null, feed: Feed): Motion[] {
+function motionsFor(event: FeedEvent | null, feed: Feed, laneOf: (job: Job) => number): Motion[] {
   if (!event) return [];
-  const task = feed.tasks.find((t) => t.id === event.task_id);
-  const producerRow = task ? ROWS[task.producer_id] : undefined;
-  const experience = feed.experiences.find((e) => e.id === event.experience_id);
-  const ink = "var(--color-ink)";
+  const job = feed.jobs.find((j) => j.id === event.job_id);
+  const lane = job ? laneOf(job) : LANES[0]!;
+  const color = hirerColor(hirerOf(feed, job));
+  const hash = { path: paths.dispatchToLedger, color: "var(--color-ink)", radius: 4 };
 
   switch (event.kind) {
-    case "task_received":
-      return [{ path: PATHS.task, color: ink }];
-    case "result_delivered":
-      return [{ path: PATHS.task, color: "var(--color-good)", reverse: true }];
-    case "search_completed":
-      return [{ path: PATHS.search, color: ink }];
-    case "order_placed":
+    case "agent_registered":
+      return [{ ...hash, color: DISPATCH_COLOR }];
+    case "registry_search":
+      return [{ path: paths.hirerToRegistry(lane), color }];
+    case "job_started":
+      return [{ path: paths.hirerToEscrow(lane), color }];
     case "funds_locked":
-      return [{ path: PATHS.search, color: TOKEN_COLOR, radius: 6 }];
-    case "content_delivered":
-      return [{ path: PATHS.search, color: agentColor(experience?.creator_id), reverse: true, radius: 6 }];
-    case "tool_call":
-      return producerRow === undefined
-        ? []
-        : [{ path: PATHS.dispatch(producerRow), color: event.ok ? agentColor(task?.producer_id) : "var(--color-critical)", radius: 4 }];
-    case "experience_published": {
-      const row = experience ? ROWS[experience.creator_id] : undefined;
-      return row === undefined ? [] : [{ path: PATHS.publish(row), color: agentColor(experience?.creator_id), radius: 6 }];
+      return [{ path: paths.hirerToEscrow(lane), color: TOKEN_COLOR, radius: 7 }, hash];
+    case "dialing":
+      return [{ path: paths.dispatchToParty(lane), color: DISPATCH_COLOR }];
+    case "transcript_turn": {
+      const turn = job?.result?.transcript.turns[event.turn_index ?? 0];
+      return [{ path: paths.dispatchToParty(lane), color: turn?.speaker === "agent" ? DISPATCH_COLOR : "var(--color-ink-2)", reverse: turn?.speaker !== "agent", radius: 4 }];
     }
-    case "payout_confirmed": {
-      const row = event.agent_id ? ROWS[event.agent_id] : undefined;
-      return row === undefined ? [] : [{ path: PATHS.publish(row), color: TOKEN_COLOR, reverse: true, radius: 7 }];
-    }
+    case "result_submitted":
+      return [hash];
+    case "result_delivered":
+      return [{ path: paths.hirerToDispatch(lane), color: DISPATCH_COLOR, reverse: true, radius: 6 }];
+    case "payment_collected":
+      return [{ path: paths.escrowToDispatch, color: TOKEN_COLOR, radius: 7 }];
     default:
       return [];
   }
@@ -68,15 +69,33 @@ function motionsFor(event: FeedEvent | null, feed: Feed): Motion[] {
 function Particle({ path, color, reverse, radius = 5 }: Motion) {
   return (
     <circle r={radius} fill={color} stroke="var(--color-surface)" strokeWidth={2}>
-      <animateMotion
-        dur="0.85s"
-        fill="freeze"
-        path={path}
-        calcMode="linear"
-        keyPoints={reverse ? "1;0" : "0;1"}
-        keyTimes="0;1"
-      />
+      <animateMotion dur="0.9s" fill="freeze" path={path} calcMode="linear" keyPoints={reverse ? "1;0" : "0;1"} keyTimes="0;1" />
     </circle>
+  );
+}
+
+/** Fast-forwards a hold timer so minutes of hold music play out in two seconds. */
+function HoldCounter({ seconds, x, y }: { seconds: number; x: number; y: number }) {
+  const [shown, setShown] = useState(0);
+  useEffect(() => {
+    const duration = 2200;
+    const started = performance.now();
+    let frame = requestAnimationFrame(function tick(now) {
+      const progress = Math.min(1, (now - started) / duration);
+      setShown(Math.round(seconds * progress));
+      if (progress < 1) frame = requestAnimationFrame(tick);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [seconds]);
+  const mm = String(Math.floor(shown / 60)).padStart(2, "0");
+  const ss = String(shown % 60).padStart(2, "0");
+  return (
+    <g>
+      <rect x={x - 54} y={y - 15} width={108} height={30} rx={15} fill="var(--color-surface)" stroke="var(--color-warning)" />
+      <text x={x} y={y + 5} textAnchor="middle" fill="var(--color-ink)" fontSize={12.5} fontWeight={600} className="tabular">
+        On hold {mm}:{ss}
+      </text>
+    </g>
   );
 }
 
@@ -84,144 +103,145 @@ function PulseRing({ x, y, r, color }: { x: number; y: number; r: number; color:
   return <circle className="pulse-ring" cx={x} cy={y} r={r} fill="none" stroke={color} strokeWidth={2} />;
 }
 
-interface NetworkGraphProps {
-  feed: Feed;
-  snapshot: Snapshot;
-}
-
-export function NetworkGraph({ feed, snapshot }: NetworkGraphProps) {
+export function NetworkGraph({ feed, snapshot }: { feed: Feed; snapshot: Snapshot }) {
   const event = snapshot.current;
-  const producers = feed.agents.filter((a) => ROWS[a.id] !== undefined);
-  const storyExperiences = feed.experiences.filter((e) => !e.seeded && ROWS[e.creator_id] !== undefined);
-  const workingProducer = Object.entries(snapshot.tasks).find(([, t]) => t.stage === "working")?.[0];
-  const workingProducerId = feed.tasks.find((t) => t.id === workingProducer)?.producer_id;
-  const brokerBusy = Object.values(snapshot.tasks).some((t) => !["queued", "published", "delivered"].includes(t.stage));
-  const escrowActive = event?.kind === "funds_locked" || event?.kind === "order_placed";
-  const searching = event?.kind === "search_completed";
-  const chosen = event?.kind === "search_completed" ? feed.tasks.find((t) => t.id === event.task_id)?.search.chosen_experience_id : null;
+  const laneOf = (job: Job) => LANES[Math.min(feed.jobs.indexOf(job), LANES.length - 1)] ?? LANES[0]!;
+  const activeJob = feed.jobs.find((j) => j.id === snapshot.activeJobId);
+  const onCallJob = feed.jobs.find((j) => ["dialing", "on_call"].includes(snapshot.jobs[j.id]?.stage ?? ""));
+  const holdingJob = feed.jobs.find((j) => snapshot.jobs[j.id]?.holdSeconds != null);
+  const escrowActive = event?.kind === "funds_locked" || event?.kind === "payment_collected";
+  const searching = event?.kind === "registry_search";
+  const hashing = event?.kind === "funds_locked" || event?.kind === "result_submitted" || event?.kind === "agent_registered";
+  const asset = (units: bigint) => `${formatAsset(units, feed.asset.decimals)} ${feed.asset.symbol}`;
 
   return (
-    <svg viewBox="0 0 760 440" className="h-full w-full" role="img" aria-label="Network of the Sokosumi customer, Experience Broker, producer agents, escrow and published experiences">
-      <defs>
-        <marker id="arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
-          <path d="M0 0 L8 4 L0 8 z" fill="var(--color-muted)" />
-        </marker>
-      </defs>
-
-      {/* Experience Network container */}
-      <rect x={NETWORK.x} y={NETWORK.y} width={NETWORK.w} height={NETWORK.h} rx={14} fill="var(--color-surface-2)" stroke={searching ? "var(--color-ink-2)" : "var(--color-line)"} />
-      <text x={NETWORK.x + 14} y={NETWORK.y + 22} fill="var(--color-ink-2)" fontSize={12} fontWeight={600}>Experience Network</text>
-      <text x={NETWORK.x + 14} y={NETWORK.y + 37} fill="var(--color-muted)" fontSize={10.5}>search · storefront · lineage</text>
-
+    <svg viewBox="0 0 760 420" className="h-full w-full" role="img" aria-label="Hirers pay into Masumi escrow, Dispatch places the call, and hashes of the request and transcript are committed to Cardano">
       {/* Edges */}
-      <path d={PATHS.task} stroke="var(--color-axis)" strokeWidth={1.5} fill="none" />
-      <path d={PATHS.search} stroke={escrowActive ? TOKEN_COLOR : "var(--color-axis)"} strokeWidth={1.5} fill="none" />
-      {producers.map((agent) => {
-        const row = ROWS[agent.id]!;
-        const active = workingProducerId === agent.id;
+      <g>
+      {feed.jobs.map((job) => {
+        const lane = laneOf(job);
+        const hirer = hirerOf(feed, job);
+        const color = hirerColor(hirer);
+        const live = onCallJob?.id === job.id;
         return (
-          <g key={agent.id}>
-            <path d={PATHS.dispatch(row)} stroke={active ? agentColor(agent.id) : "var(--color-axis)"} strokeWidth={active ? 2 : 1.5} fill="none" />
-            <path d={PATHS.publish(row)} stroke="var(--color-axis)" strokeWidth={1.5} fill="none" />
-          </g>
-        );
-      })}
-
-      {/* Lineage arrows between published experiences */}
-      {storyExperiences.flatMap((exp) =>
-        exp.parents
-          .filter((p) => snapshot.published.has(exp.id) && snapshot.published.has(p.experience_id))
-          .map((p) => {
-            const parent = feed.experiences.find((e) => e.id === p.experience_id);
-            const fromY = ROWS[parent?.creator_id ?? ""]! + 25;
-            const toY = ROWS[exp.creator_id]! - 27;
-            return (
-              <g key={`${p.experience_id}-${exp.id}`}>
-                <line x1={EXP_X} y1={fromY} x2={EXP_X} y2={toY} stroke="var(--color-muted)" strokeWidth={1.5} markerEnd="url(#arrow)" />
-                <text x={EXP_X + 8} y={(fromY + toY) / 2 + 4} fill="var(--color-muted)" fontSize={10}>builds on</text>
-              </g>
-            );
-          }),
-      )}
-
-      {/* Customer */}
-      <g>
-        <rect x={CUSTOMER.x - 52} y={CUSTOMER.y - 28} width={104} height={56} rx={10} fill="var(--color-surface-2)" stroke="var(--color-line)" />
-        <text x={CUSTOMER.x} y={CUSTOMER.y - 3} textAnchor="middle" fill="var(--color-ink)" fontSize={13} fontWeight={600}>Sokosumi</text>
-        <text x={CUSTOMER.x} y={CUSTOMER.y + 14} textAnchor="middle" fill="var(--color-muted)" fontSize={10.5}>customer tasks</text>
-      </g>
-
-      {/* Broker */}
-      <g>
-        {brokerBusy && <rect className="pulse-ring" x={BROKER.x - BROKER.w / 2} y={BROKER.y - BROKER.h / 2} width={BROKER.w} height={BROKER.h} rx={12} fill="none" stroke="var(--color-ink-2)" strokeWidth={1.5} />}
-        <rect x={BROKER.x - BROKER.w / 2} y={BROKER.y - BROKER.h / 2} width={BROKER.w} height={BROKER.h} rx={12} fill="var(--color-surface-2)" stroke="var(--color-ink-2)" />
-        <text x={BROKER.x} y={BROKER.y - 4} textAnchor="middle" fill="var(--color-ink)" fontSize={13.5} fontWeight={600}>Experience Broker</text>
-        <text x={BROKER.x} y={BROKER.y + 13} textAnchor="middle" fill="var(--color-muted)" fontSize={10.5}>
-          {snapshot.registered.has("broker") ? "registered on Masumi" : "Sokosumi Coworker"}
-        </text>
-      </g>
-
-      {/* Escrow */}
-      <g>
-        {escrowActive && <PulseRing x={ESCROW.x} y={ESCROW.y} r={16} color={TOKEN_COLOR} />}
-        <rect x={ESCROW.x - 62} y={ESCROW.y - 14} width={124} height={28} rx={14} fill="var(--color-surface)" stroke={escrowActive ? TOKEN_COLOR : "var(--color-line)"} />
-        <text x={ESCROW.x} y={ESCROW.y + 4} textAnchor="middle" fill="var(--color-ink-2)" fontSize={11}>Masumi escrow · Cardano</text>
-      </g>
-
-      {/* Producers */}
-      {producers.map((agent) => {
-        const row = ROWS[agent.id]!;
-        const color = agentColor(agent.id);
-        const hasWorked = feed.tasks.some((t) => t.producer_id === agent.id && snapshot.tasks[t.id]?.stage !== "queued");
-        const earned = snapshot.earnedByAgent[agent.id] ?? 0n;
-        return (
-          <g key={agent.id} opacity={hasWorked ? 1 : 0.35} style={{ transition: "opacity 400ms" }}>
-            {workingProducerId === agent.id && <PulseRing x={PRODUCER_X} y={row} r={PRODUCER_R} color={color} />}
-            <circle cx={PRODUCER_X} cy={row} r={PRODUCER_R} fill={color} stroke="var(--color-surface)" strokeWidth={2} />
-            <text x={PRODUCER_X} y={row + 6} textAnchor="middle" fill="#fff" fontSize={17} fontWeight={700}>{agent.name.slice(-1)}</text>
-            <text x={PRODUCER_X} y={row + PRODUCER_R + 16} textAnchor="middle" fill="var(--color-ink-2)" fontSize={11}>{agent.name}</text>
-            {earned > 0n && (
-              <text x={PRODUCER_X} y={row + PRODUCER_R + 30} textAnchor="middle" fill="var(--color-ink)" fontSize={11} fontWeight={600}>
-                +{formatAsset(earned, feed.asset.decimals)} {feed.asset.symbol}
-              </text>
+          <g key={job.id}>
+            <path d={paths.hirerToEscrow(lane)} fill="none" stroke={activeJob?.id === job.id ? color : "var(--color-axis)"} strokeWidth={1.5} />
+            <path d={paths.dispatchToParty(lane)} fill="none" stroke="var(--color-axis)" strokeWidth={1.5} />
+            {live && (
+              <path d={paths.dispatchToParty(lane)} fill="none" stroke={DISPATCH_COLOR} strokeWidth={2.5} strokeDasharray="6 6" className="call-line" />
+            )}
+            {hirer?.kind === "agent" && (
+              <path d={paths.hirerToRegistry(lane)} fill="none" stroke={searching ? color : "var(--color-line)"} strokeWidth={1.5} strokeDasharray="3 4" />
             )}
           </g>
         );
       })}
+      </g>
+      <path d={paths.escrowToDispatch} fill="none" stroke={escrowActive ? TOKEN_COLOR : "var(--color-axis)"} strokeWidth={1.5} />
+      <path d={paths.dispatchToLedger} fill="none" stroke={hashing ? "var(--color-ink-2)" : "var(--color-axis)"} strokeWidth={1.5} />
 
-      {/* Experiences */}
-      {storyExperiences.map((exp) => {
-        const row = ROWS[exp.creator_id]!;
-        const color = agentColor(exp.creator_id);
-        const isPublished = snapshot.published.has(exp.id);
-        const isChosen = chosen === exp.id;
+      {/* Masumi registry */}
+      <g opacity={searching ? 1 : 0.55} style={{ transition: "opacity 400ms" }}>
+        {searching && <PulseRing x={REGISTRY.x} y={REGISTRY.y} r={18} color="var(--color-hirer-agent)" />}
+        <rect x={REGISTRY.x - 62} y={REGISTRY.y - 15} width={124} height={30} rx={15} fill="var(--color-surface-2)" stroke="var(--color-line)" />
+        <text x={REGISTRY.x} y={REGISTRY.y + 4} textAnchor="middle" fill="var(--color-ink-2)" fontSize={11}>Masumi registry</text>
+      </g>
+
+      {/* Hirers */}
+      <g>
+      {feed.jobs.map((job) => {
+        const lane = laneOf(job);
+        const hirer = hirerOf(feed, job);
+        const progress = snapshot.jobs[job.id];
+        const color = hirerColor(hirer);
+        const Icon = hirer?.kind === "agent" ? Bot : User;
+        const status = progress?.hirerResumed
+          ? "task closed ✓"
+          : ["delivered", "collected"].includes(progress?.stage ?? "")
+            ? "result received"
+            : progress && progress.stage !== "queued"
+              ? hirer?.kind === "agent" ? "paused: needs a call" : "off the phone"
+              : hirer?.via === "sokosumi" ? "via Sokosumi" : "AI agent via Masumi";
         return (
-          <g key={exp.id}>
-            {isChosen && <rect className="pulse-ring" x={EXP_X - 58} y={row - 24} width={116} height={48} rx={10} fill="none" stroke="var(--color-ink)" strokeWidth={2} />}
-            <rect
-              x={EXP_X - 58}
-              y={row - 24}
-              width={116}
-              height={48}
-              rx={10}
-              fill={isPublished ? `color-mix(in oklab, ${color} 22%, var(--color-surface))` : "transparent"}
-              stroke={isPublished ? color : "var(--color-axis)"}
-              strokeDasharray={isPublished ? undefined : "4 4"}
-              strokeWidth={isPublished ? 1.5 : 1}
-            />
-            <text x={EXP_X} y={row - 3} textAnchor="middle" fill={isPublished ? "var(--color-ink)" : "var(--color-muted)"} fontSize={12.5} fontWeight={600} className="font-mono">
-              {exp.id}
-            </text>
-            <text x={EXP_X} y={row + 13} textAnchor="middle" fill="var(--color-muted)" fontSize={10}>
-              {isPublished ? (exp.parents.length ? `child of ${exp.parents[0]!.experience_id}` : "root experience") : "not learned yet"}
-            </text>
+          <g key={job.id} opacity={progress?.stage === "queued" ? 0.45 : 1} style={{ transition: "opacity 400ms" }}>
+            {(event?.kind === "hirer_resumed" || event?.kind === "job_started") && event.job_id === job.id && (
+              <rect className="pulse-ring" x={HIRER_X - NODE_W / 2} y={lane - NODE_H / 2} width={NODE_W} height={NODE_H} rx={11} fill="none" stroke={color} strokeWidth={2} />
+            )}
+            <rect x={HIRER_X - NODE_W / 2} y={lane - NODE_H / 2} width={NODE_W} height={NODE_H} rx={11} fill="var(--color-surface-2)" stroke={color} strokeWidth={1.5} />
+            <Icon x={HIRER_X - NODE_W / 2 + 11} y={lane - 9} width={18} height={18} color={color} strokeWidth={2.2} />
+            <text x={HIRER_X - NODE_W / 2 + 36} y={lane - 3} fill="var(--color-ink)" fontSize={12.5} fontWeight={600}>{hirer?.name}</text>
+            <text x={HIRER_X - NODE_W / 2 + 36} y={lane + 13} fill="var(--color-muted)" fontSize={10.5}>{status}</text>
           </g>
         );
       })}
+      </g>
 
-      {/* Moving particles for the current event, restarted per event */}
-      <g key={event?.id ?? "none"}>
-        {motionsFor(event, feed).map((m, i) => (
+      {/* Escrow */}
+      <g>
+        {escrowActive && <PulseRing x={ESCROW.x} y={ESCROW.y} r={26} color={TOKEN_COLOR} />}
+        <rect x={ESCROW.x - 58} y={ESCROW.y - 30} width={116} height={60} rx={12} fill="var(--color-surface-2)" stroke={escrowActive ? TOKEN_COLOR : "var(--color-line)"} strokeWidth={1.5} />
+        <Lock x={ESCROW.x - 50} y={ESCROW.y - 22} width={13} height={13} color={TOKEN_COLOR} />
+        <text x={ESCROW.x - 33} y={ESCROW.y - 12} fill="var(--color-ink-2)" fontSize={11} fontWeight={600}>Masumi escrow</text>
+        <text x={ESCROW.x} y={ESCROW.y + 12} textAnchor="middle" fill="var(--color-ink)" fontSize={13} fontWeight={600} className="tabular">
+          {asset(snapshot.lockedTotal)}
+        </text>
+        <text x={ESCROW.x} y={ESCROW.y + 24} textAnchor="middle" fill="var(--color-muted)" fontSize={9.5}>locked</text>
+      </g>
+
+      {/* Dispatch */}
+      <g>
+        {(onCallJob || event?.kind === "brief_parsed" || event?.kind === "outcome_ready") && <PulseRing x={DISPATCH.x} y={DISPATCH.y} r={DISPATCH.r} color={DISPATCH_COLOR} />}
+        <circle cx={DISPATCH.x} cy={DISPATCH.y} r={DISPATCH.r} fill={DISPATCH_COLOR} stroke="var(--color-surface)" strokeWidth={3} />
+        <Phone x={DISPATCH.x - 15} y={DISPATCH.y - 22} width={30} height={30} color="#fff" strokeWidth={2.2} />
+        <text x={DISPATCH.x} y={DISPATCH.y + 24} textAnchor="middle" fill="#fff" fontSize={12} fontWeight={700}>{feed.dispatch.name}</text>
+        <text x={DISPATCH.x} y={DISPATCH.y - DISPATCH.r - 10} textAnchor="middle" fill="var(--color-muted)" fontSize={10.5}>
+          {snapshot.registered ? "registered on Masumi" : "not registered yet"}
+        </text>
+        {snapshot.collectedTotal > 0n && (
+          <text x={DISPATCH.x} y={DISPATCH.y - DISPATCH.r - 25} textAnchor="middle" fill="var(--color-ink)" fontSize={11.5} fontWeight={600}>
+            +{asset(snapshot.collectedTotal)} collected
+          </text>
+        )}
+      </g>
+
+      {/* Parties called */}
+      <g>
+      {feed.jobs.map((job) => {
+        const lane = laneOf(job);
+        const party = feed.parties.find((p) => p.id === job.party_id);
+        const stage = snapshot.jobs[job.id]?.stage ?? "queued";
+        const reached = !["queued", "searching", "hired", "funds_locked"].includes(stage);
+        const ringing = stage === "dialing";
+        return (
+          <g key={job.id} opacity={reached ? 1 : 0.4} style={{ transition: "opacity 400ms" }}>
+            {(ringing || onCallJob?.id === job.id) && (
+              <rect className="pulse-ring" x={PARTY_X - NODE_W / 2} y={lane - NODE_H / 2} width={NODE_W} height={NODE_H} rx={11} fill="none" stroke={DISPATCH_COLOR} strokeWidth={2} />
+            )}
+            <rect x={PARTY_X - NODE_W / 2} y={lane - NODE_H / 2} width={NODE_W} height={NODE_H} rx={11} fill="var(--color-surface-2)" stroke="var(--color-line)" />
+            <Building2 x={PARTY_X - NODE_W / 2 + 11} y={lane - 9} width={18} height={18} color="var(--color-ink-2)" />
+            <text x={PARTY_X - NODE_W / 2 + 36} y={lane - 3} fill="var(--color-ink)" fontSize={12} fontWeight={600}>{party?.name.split(" ").slice(0, 2).join(" ")}</text>
+            <text x={PARTY_X - NODE_W / 2 + 36} y={lane + 13} fill="var(--color-muted)" fontSize={10.5}>{party?.phone_masked}</text>
+          </g>
+        );
+      })}
+      </g>
+
+      {/* Hold timer on the live call line */}
+      {holdingJob && event?.kind === "on_hold" && (
+        <HoldCounter key={`hold-${event.id}`} seconds={snapshot.jobs[holdingJob.id]!.holdSeconds!} x={588} y={(DISPATCH.y + laneOf(holdingJob)) / 2} />
+      )}
+
+      {/* Cardano ledger */}
+      <g>
+        {hashing && <PulseRing x={LEDGER.x} y={LEDGER.y} r={16} color="var(--color-ink-2)" />}
+        <rect x={LEDGER.x - 92} y={LEDGER.y - 14} width={184} height={28} rx={14} fill="var(--color-surface-2)" stroke={hashing ? "var(--color-ink-2)" : "var(--color-line)"} />
+        <text x={LEDGER.x} y={LEDGER.y + 4} textAnchor="middle" fill="var(--color-ink-2)" fontSize={11}>
+          Cardano ledger · {snapshot.commitments} hashes
+        </text>
+      </g>
+
+      <g key={`particles-${event?.id ?? "none"}`}>
+        {motionsFor(event, feed, laneOf).map((m, i) => (
           <Particle key={i} {...m} />
         ))}
       </g>

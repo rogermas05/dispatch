@@ -136,9 +136,23 @@ It reads one feed validated by `packages/schema` (`VITE_FEED_URL`, default
 data, labelled as such on screen — and the schema rejects a mock feed that claims a
 verified transaction, which is the VERIFIED/REPORTED rule enforced in code.
 
-The escrow and receipt views are product-agnostic and carry over unchanged. The
-call-specific panels are being repointed from the dashboard's original concept
-(see [`docs/archive/`](docs/archive/)).
+The mock story follows [`docs/PRODUCT.md`](docs/PRODUCT.md) §6: a person hires
+Dispatch to fight a denied insurance claim, then an AI agent finds Dispatch in the
+Masumi registry mid-task, pays from its own wallet, and finishes its own task with
+the transcript. Panels: calls, live network animation, live transcript (with hold
+time), outcome, on-chain proof and receipts.
+
+**On-chain proof is real even on mock data.** Each job carries the exact MIP-003
+`input_data` and the delivered `CallOutcome`; the dashboard recomputes both SHA-256
+hashes in the browser with the same canonicalization as `apps/agent-api`
+(`packages/schema/src/canonical.ts`, guarded by a test that fails if the two ever
+drift), and can change one digit of the transcript to show the hash break.
+
+**For the live feed**, the worker/agent API need to emit `packages/schema`'s `Feed`
+(`schema_version: 2`, JSON Schema in `packages/schema/feed.schema.json`): per job the
+`input`, `input_hash`, `result` (the worker's `CallOutcome`), `output_hash`, the four
+escrow deadlines, receipts with `verification: "verified"` plus an explorer URL once
+chain-checked, and the event log the replay plays back.
 
 ---
 

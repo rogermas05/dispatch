@@ -3,12 +3,20 @@ import type { FeedEvent } from "@token-origins/schema";
 
 // Dwell time after each event, before the next one plays (ms at 1x).
 const DWELL_MS: Partial<Record<FeedEvent["kind"], number>> = {
-  tool_call: 420,
-  agent_registered: 900,
-  royalty_allocated: 1800,
-  payout_confirmed: 1300,
-  experience_published: 1800,
-  search_completed: 1800,
+  agent_registered: 1200,
+  registry_search: 3200,
+  job_started: 2000,
+  funds_locked: 2200,
+  brief_parsed: 2600,
+  dialing: 1600,
+  transcript_turn: 2300,
+  on_hold: 3000,
+  call_ended: 1400,
+  outcome_ready: 3200,
+  result_submitted: 2400,
+  result_delivered: 1800,
+  hirer_resumed: 3600,
+  payment_collected: 2200,
 };
 const DEFAULT_DWELL_MS = 1300;
 

@@ -1,49 +1,52 @@
+import { createHash } from "node:crypto";
 import { describe, expect, test } from "vitest";
+import { canonicalize } from "./canonical.ts";
 import { Feed } from "./feed.ts";
 import { buildMockFeed } from "./mock/build.ts";
 
 const mock = () => structuredClone(buildMockFeed());
+const sha256 = (value: unknown) => createHash("sha256").update(canonicalize(value)).digest("hex");
 
 describe("mock feed", () => {
   test("passes the feed schema and integrity checks", () => {
-    const result = Feed.safeParse(mock());
-    expect(result.error?.issues ?? []).toEqual([]);
+    expect(Feed.safeParse(mock()).error?.issues ?? []).toEqual([]);
   });
 
   test("is deterministic", () => {
     expect(buildMockFeed()).toEqual(buildMockFeed());
   });
 
-  test("task metrics match the replayed tool-call events", () => {
-    const feed = mock();
-    for (const task of feed.tasks) {
-      const calls = feed.events.filter((e) => e.kind === "tool_call" && e.task_id === task.id);
-      expect(calls.length).toBe(task.metrics.tool_calls);
-      expect(calls.filter((e) => !e.ok).length).toBe(task.metrics.failed_tool_calls);
+  test("input and output hashes are real SHA-256 over the canonical JSON", () => {
+    for (const job of mock().jobs) {
+      expect(job.input_hash).toBe(sha256(job.input));
+      expect(job.output_hash).toBe(sha256(job.result));
     }
   });
 
-  test("every collected order's fee plus allocations equals the collected amount", () => {
+  test("replays every transcript turn exactly once, in order", () => {
     const feed = mock();
-    for (const order of feed.orders) {
-      const allocated = feed.allocations
-        .filter((a) => a.order_id === order.id)
-        .reduce((sum, a) => sum + BigInt(a.amount), BigInt(order.platform_fee ?? "0"));
-      expect(allocated.toString()).toBe(order.collected_amount);
+    for (const job of feed.jobs) {
+      const turns = feed.events.filter((e) => e.kind === "transcript_turn" && e.job_id === job.id).map((e) => e.turn_index);
+      expect(turns).toEqual(job.result!.transcript.turns.map((_, i) => i));
     }
   });
 
-  test("tells the A → B → C story with the spec's royalty split", () => {
+  test("funds lock before dialing, and collection waits for the dispute window", () => {
     const feed = mock();
-    const exp = (id: string) => feed.experiences.find((e) => e.id === id)!;
-    expect(exp("exp_a").parents).toEqual([]);
-    expect(exp("exp_b").parents.map((p) => p.experience_id)).toEqual(["exp_a"]);
-    expect(exp("exp_c").split).toEqual([
-      { recipient_id: "agent_c", bps: 8000 },
-      { recipient_id: "agent_b", bps: 1600 },
-      { recipient_id: "agent_a", bps: 400 },
-    ]);
-    expect(feed.tasks.map((t) => t.search.decision)).toEqual(["cold_start", "purchase", "purchase"]);
+    for (const job of feed.jobs) {
+      const at = (kind: string) => Date.parse(feed.events.find((e) => e.kind === kind && e.job_id === job.id)!.at);
+      expect(at("funds_locked")).toBeLessThan(at("dialing"));
+      expect(at("result_submitted")).toBeLessThan(Date.parse(job.deadlines.submit_result_by));
+      expect(at("payment_collected")).toBeGreaterThanOrEqual(Date.parse(job.deadlines.unlock_at));
+    }
+  });
+
+  test("the agent hirer finds Dispatch in the registry and resumes its own task", () => {
+    const feed = mock();
+    const agentJob = feed.jobs.find((j) => feed.hirers.find((h) => h.id === j.hirer_id)?.kind === "agent")!;
+    const kinds = feed.events.filter((e) => e.job_id === agentJob.id).map((e) => e.kind);
+    expect(kinds[0]).toBe("registry_search");
+    expect(kinds).toContain("hirer_resumed");
   });
 
   test("events are chronological", () => {
@@ -56,9 +59,7 @@ describe("feed integrity rules", () => {
   test("rejects a verified receipt inside a mock feed", () => {
     const feed = mock();
     feed.receipts[0]!.verification = "verified";
-    const result = Feed.safeParse(feed);
-    expect(result.success).toBe(false);
-    expect(result.error?.issues.map((i) => i.message)).toContain("mock feeds may only contain mock receipts");
+    expect(Feed.safeParse(feed).error?.issues.map((i) => i.message)).toContain("mock feeds may only contain mock receipts");
   });
 
   test("rejects a mock receipt that links to an explorer", () => {
@@ -69,20 +70,26 @@ describe("feed integrity rules", () => {
 
   test("rejects a dangling reference", () => {
     const feed = mock();
-    feed.orders[0]!.experience_id = "exp_missing";
-    const result = Feed.safeParse(feed);
-    expect(result.error?.issues.map((i) => i.message)).toContain('unknown experience "exp_missing"');
+    feed.jobs[0]!.party_id = "nobody";
+    expect(Feed.safeParse(feed).error?.issues.map((i) => i.message)).toContain('unknown party "nobody"');
+  });
+
+  test("rejects a transcript event pointing past the transcript", () => {
+    const feed = mock();
+    const turn = feed.events.find((e) => e.kind === "transcript_turn")!;
+    turn.turn_index = 999;
+    expect(Feed.safeParse(feed).success).toBe(false);
+  });
+
+  test("rejects a result without an output hash", () => {
+    const feed = mock();
+    feed.jobs[0]!.output_hash = null;
+    expect(Feed.safeParse(feed).success).toBe(false);
   });
 
   test("rejects out-of-order event sequence numbers", () => {
     const feed = mock();
     feed.events[2]!.seq = 0;
-    expect(Feed.safeParse(feed).success).toBe(false);
-  });
-
-  test("rejects a split that does not total 10000 bps", () => {
-    const feed = mock();
-    feed.experiences[0]!.split = [{ recipient_id: feed.experiences[0]!.creator_id, bps: 9000 }];
     expect(Feed.safeParse(feed).success).toBe(false);
   });
 });

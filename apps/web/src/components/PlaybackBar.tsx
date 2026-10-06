@@ -1,6 +1,6 @@
 import { Pause, Play, RotateCcw, SkipBack, SkipForward } from "lucide-react";
 import type { Feed } from "@token-origins/schema";
-import { agentColor, TOKEN_COLOR } from "../lib/entities.ts";
+import { jobColor, TOKEN_COLOR } from "../lib/entities.ts";
 import type { Playback } from "../lib/usePlayback.ts";
 
 const SPEEDS = [1, 2, 4];
@@ -23,7 +23,7 @@ export function PlaybackBar({ feed, playback }: { feed: Feed; playback: Playback
   const total = feed.events.length;
   const markers = feed.events
     .map((e, i) => ({ e, i }))
-    .filter(({ e }) => e.kind === "experience_published" || e.kind === "payout_confirmed" || e.kind === "task_received");
+    .filter(({ e }) => e.kind === "job_started" || e.kind === "outcome_ready" || e.kind === "payment_collected");
 
   return (
     <div className="flex items-center gap-3 rounded-xl border border-line bg-surface px-3 py-2">
@@ -56,7 +56,7 @@ export function PlaybackBar({ feed, playback }: { feed: Feed; playback: Playback
               className="absolute top-0 h-1.5 w-[3px] -translate-x-1/2 rounded-full"
               style={{
                 left: `${(i / total) * 100}%`,
-                background: e.kind === "payout_confirmed" ? TOKEN_COLOR : e.kind === "task_received" ? "var(--color-muted)" : agentColor(feed.experiences.find((x) => x.id === e.experience_id)?.creator_id),
+                background: e.kind === "payment_collected" ? TOKEN_COLOR : jobColor(feed, e.job_id),
               }}
             />
           ))}

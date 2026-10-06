@@ -1,16 +1,16 @@
 import { useEffect, useMemo } from "react";
 import type { Feed } from "@token-origins/schema";
-import { ComparisonChart } from "./components/ComparisonChart.tsx";
 import { Header } from "./components/Header.tsx";
+import { JobPipeline } from "./components/JobPipeline.tsx";
 import { Narration } from "./components/Narration.tsx";
 import { NetworkGraph } from "./components/NetworkGraph.tsx";
 import { Panel } from "./components/Panel.tsx";
 import { PlaybackBar } from "./components/PlaybackBar.tsx";
+import { OutcomePanel } from "./components/OutcomePanel.tsx";
+import { ProofPanel } from "./components/ProofPanel.tsx";
 import { ReceiptsFeed } from "./components/ReceiptsFeed.tsx";
-import { RoyaltyPanel } from "./components/RoyaltyPanel.tsx";
-import { SearchPanel } from "./components/SearchPanel.tsx";
 import { StatTiles } from "./components/StatTiles.tsx";
-import { TaskPipeline } from "./components/TaskPipeline.tsx";
+import { TranscriptPanel } from "./components/TranscriptPanel.tsx";
 import { snapshotAt } from "./lib/replay.ts";
 import { useFeed } from "./lib/useFeed.ts";
 import { usePlayback, type Playback } from "./lib/usePlayback.ts";
@@ -40,17 +40,17 @@ function Dashboard({ feed }: { feed: Feed }) {
       <Header feed={feed} />
       <StatTiles feed={feed} snapshot={snapshot} />
       <Narration feed={feed} snapshot={snapshot} onPlay={playback.restart} />
-      <div className="grid h-[440px] grid-cols-12 gap-3">
-        <div className="col-span-3 flex min-h-0 min-w-0"><TaskPipeline feed={feed} snapshot={snapshot} /></div>
-        <Panel className="col-span-6" title="How experience moves" subtitle="Tasks in from Sokosumi · work by producer agents · experiences published · tUSDM back to creators">
+      <div className="grid h-[460px] grid-cols-12 gap-3">
+        <div className="col-span-3 flex min-h-0 min-w-0"><JobPipeline feed={feed} snapshot={snapshot} /></div>
+        <Panel className="col-span-5" title="How a call moves" subtitle="Pay into escrow · Dispatch calls · hashes of the request and transcript go on-chain · collect after the dispute window">
           <NetworkGraph feed={feed} snapshot={snapshot} />
         </Panel>
-        <div className="col-span-3 flex min-h-0 min-w-0"><ReceiptsFeed feed={feed} snapshot={snapshot} /></div>
+        <div className="col-span-4 flex min-h-0 min-w-0"><TranscriptPanel feed={feed} snapshot={snapshot} /></div>
       </div>
       <div className="grid grid-cols-3 gap-3">
-        <SearchPanel feed={feed} snapshot={snapshot} />
-        <ComparisonChart feed={feed} snapshot={snapshot} />
-        <RoyaltyPanel feed={feed} snapshot={snapshot} />
+        <OutcomePanel feed={feed} snapshot={snapshot} />
+        <ProofPanel feed={feed} snapshot={snapshot} />
+        <ReceiptsFeed feed={feed} snapshot={snapshot} />
       </div>
       <div className="sticky bottom-3"><PlaybackBar feed={feed} playback={playback} /></div>
     </div>

@@ -4,7 +4,7 @@
   "properties": {
     "schema_version": {
       "type": "number",
-      "const": 1
+      "const": 2
     },
     "generated_at": {
       "type": "string",
@@ -43,12 +43,34 @@
         "decimals"
       ]
     },
-    "platform_fee_bps": {
-      "type": "integer",
-      "minimum": 0,
-      "maximum": 10000
+    "dispatch": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "agent_identifier": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "voice_provider": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "agent_identifier",
+        "voice_provider"
+      ]
     },
-    "agents": {
+    "hirers": {
       "type": "array",
       "items": {
         "type": "object",
@@ -60,43 +82,73 @@
           "name": {
             "type": "string"
           },
-          "role": {
+          "kind": {
             "type": "string",
             "enum": [
-              "broker",
-              "storefront",
-              "producer",
-              "customer"
+              "human",
+              "agent"
             ]
           },
-          "provider": {
-            "type": [
-              "string",
-              "null"
+          "via": {
+            "type": "string",
+            "enum": [
+              "sokosumi",
+              "masumi"
             ]
           },
-          "masumi_agent_identifier": {
-            "type": [
-              "string",
-              "null"
-            ]
+          "description": {
+            "type": "string"
           }
         },
         "required": [
           "id",
           "name",
-          "role",
-          "provider",
-          "masumi_agent_identifier"
+          "kind",
+          "via",
+          "description"
         ]
       }
     },
-    "tasks": {
+    "parties": {
       "type": "array",
       "items": {
         "type": "object",
         "properties": {
           "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string"
+          },
+          "phone_masked": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "phone_masked"
+        ]
+      }
+    },
+    "jobs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "title": {
+            "type": "string"
+          },
+          "hirer_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "party_id": {
             "type": "string",
             "minLength": 1
           },
@@ -106,190 +158,27 @@
               "null"
             ]
           },
-          "title": {
-            "type": "string"
-          },
-          "brief": {
-            "type": "string"
-          },
-          "producer_id": {
-            "type": "string",
-            "minLength": 1
-          },
-          "search": {
-            "type": "object",
-            "properties": {
-              "query": {
-                "type": "string"
-              },
-              "hits": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "experience_id": {
-                      "type": "string",
-                      "minLength": 1
-                    },
-                    "score": {
-                      "type": "number",
-                      "minimum": 0,
-                      "maximum": 1
-                    },
-                    "components": {
-                      "type": "object",
-                      "properties": {
-                        "relevance": {
-                          "type": "number",
-                          "minimum": 0,
-                          "maximum": 1
-                        },
-                        "context_match": {
-                          "type": "number",
-                          "minimum": 0,
-                          "maximum": 1
-                        },
-                        "observed_success": {
-                          "type": "number",
-                          "minimum": 0,
-                          "maximum": 1
-                        },
-                        "evidence_quality": {
-                          "type": "number",
-                          "minimum": 0,
-                          "maximum": 1
-                        },
-                        "freshness": {
-                          "type": "number",
-                          "minimum": 0,
-                          "maximum": 1
-                        },
-                        "creator_reliability": {
-                          "type": "number",
-                          "minimum": 0,
-                          "maximum": 1
-                        }
-                      },
-                      "required": [
-                        "relevance",
-                        "context_match",
-                        "observed_success",
-                        "evidence_quality",
-                        "freshness",
-                        "creator_reliability"
-                      ]
-                    },
-                    "compatible": {
-                      "type": "boolean"
-                    }
-                  },
-                  "required": [
-                    "experience_id",
-                    "score",
-                    "components",
-                    "compatible"
-                  ]
-                }
-              },
-              "decision": {
-                "type": "string",
-                "enum": [
-                  "purchase",
-                  "cold_start",
-                  "reuse_entitled"
-                ]
-              },
-              "chosen_experience_id": {
-                "anyOf": [
-                  {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              }
-            },
-            "required": [
-              "query",
-              "hits",
-              "decision",
-              "chosen_experience_id"
+          "blockchain_identifier": {
+            "type": [
+              "string",
+              "null"
             ]
           },
-          "metrics": {
-            "type": "object",
-            "properties": {
-              "tool_calls": {
-                "type": "integer",
-                "minimum": 0,
-                "maximum": 9007199254740991
-              },
-              "failed_tool_calls": {
-                "type": "integer",
-                "minimum": 0,
-                "maximum": 9007199254740991
-              },
-              "tokens": {
-                "type": "integer",
-                "minimum": 0,
-                "maximum": 9007199254740991
-              },
-              "duration_ms": {
-                "type": "integer",
-                "minimum": 0,
-                "maximum": 9007199254740991
-              },
-              "compute_cost_usd": {
-                "type": "number",
-                "minimum": 0
-              }
-            },
-            "required": [
-              "tool_calls",
-              "failed_tool_calls",
-              "tokens",
-              "duration_ms",
-              "compute_cost_usd"
-            ]
-          },
-          "baseline": {
+          "hirer_task": {
             "anyOf": [
               {
                 "type": "object",
                 "properties": {
-                  "tool_calls": {
-                    "type": "integer",
-                    "minimum": 0,
-                    "maximum": 9007199254740991
+                  "title": {
+                    "type": "string"
                   },
-                  "failed_tool_calls": {
-                    "type": "integer",
-                    "minimum": 0,
-                    "maximum": 9007199254740991
-                  },
-                  "tokens": {
-                    "type": "integer",
-                    "minimum": 0,
-                    "maximum": 9007199254740991
-                  },
-                  "duration_ms": {
-                    "type": "integer",
-                    "minimum": 0,
-                    "maximum": 9007199254740991
-                  },
-                  "compute_cost_usd": {
-                    "type": "number",
-                    "minimum": 0
+                  "resolution": {
+                    "type": "string"
                   }
                 },
                 "required": [
-                  "tool_calls",
-                  "failed_tool_calls",
-                  "tokens",
-                  "duration_ms",
-                  "compute_cost_usd"
+                  "title",
+                  "resolution"
                 ]
               },
               {
@@ -297,194 +186,186 @@
               }
             ]
           },
-          "result_summary": {
-            "type": "string"
-          },
-          "published_experience_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 1
+          "input": {
+            "type": "object",
+            "properties": {
+              "to": {
+                "type": "string"
               },
-              {
-                "type": "null"
+              "objective": {
+                "type": "string"
+              },
+              "authorization": {
+                "type": "string"
+              },
+              "context": {
+                "type": "string"
+              },
+              "max_duration_seconds": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
               }
+            },
+            "required": [
+              "to",
+              "objective",
+              "authorization"
             ]
-          }
-        },
-        "required": [
-          "id",
-          "sokosumi_task_id",
-          "title",
-          "brief",
-          "producer_id",
-          "search",
-          "metrics",
-          "baseline",
-          "result_summary",
-          "published_experience_id"
-        ]
-      }
-    },
-    "experiences": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "minLength": 1
           },
-          "digest": {
+          "input_hash": {
             "type": "string",
             "pattern": "^[0-9a-f]{64}$"
-          },
-          "creator_id": {
-            "type": "string",
-            "minLength": 1
-          },
-          "task_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 1
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "seeded": {
-            "type": "boolean"
-          },
-          "problem": {
-            "type": "string"
-          },
-          "teaser": {
-            "type": "string"
-          },
-          "context": {
-            "type": "object",
-            "propertyNames": {
-              "type": "string"
-            },
-            "additionalProperties": {
-              "type": "string"
-            }
-          },
-          "evidence_level": {
-            "type": "string",
-            "enum": [
-              "self_report",
-              "artifact",
-              "evaluator"
-            ]
-          },
-          "parents": {
-            "maxItems": 4,
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "experience_id": {
-                  "type": "string",
-                  "minLength": 1
-                },
-                "digest": {
-                  "type": "string",
-                  "pattern": "^[0-9a-f]{64}$"
-                }
-              },
-              "required": [
-                "experience_id",
-                "digest"
-              ]
-            }
-          },
-          "split": {
-            "minItems": 1,
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "recipient_id": {
-                  "type": "string",
-                  "minLength": 1
-                },
-                "bps": {
-                  "type": "integer",
-                  "minimum": 0,
-                  "maximum": 10000
-                }
-              },
-              "required": [
-                "recipient_id",
-                "bps"
-              ]
-            }
           },
           "price": {
             "type": "string",
             "pattern": "^\\d+$"
-          }
-        },
-        "required": [
-          "id",
-          "digest",
-          "creator_id",
-          "task_id",
-          "seeded",
-          "problem",
-          "teaser",
-          "context",
-          "evidence_level",
-          "parents",
-          "split",
-          "price"
-        ]
-      }
-    },
-    "orders": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "minLength": 1
           },
-          "buyer_id": {
-            "type": "string",
-            "minLength": 1
+          "deadlines": {
+            "type": "object",
+            "properties": {
+              "pay_by": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+              },
+              "submit_result_by": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+              },
+              "unlock_at": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+              },
+              "external_dispute_unlock_at": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+              }
+            },
+            "required": [
+              "pay_by",
+              "submit_result_by",
+              "unlock_at",
+              "external_dispute_unlock_at"
+            ]
           },
-          "task_id": {
-            "type": "string",
-            "minLength": 1
-          },
-          "experience_id": {
-            "type": "string",
-            "minLength": 1
-          },
-          "amount": {
-            "type": "string",
-            "pattern": "^\\d+$"
-          },
-          "collected_amount": {
+          "result": {
             "anyOf": [
               {
-                "type": "string",
-                "pattern": "^\\d+$"
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "completed",
+                      "unreachable",
+                      "refused",
+                      "escalated",
+                      "timeout"
+                    ]
+                  },
+                  "durationSeconds": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "transcript": {
+                    "type": "object",
+                    "properties": {
+                      "turns": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "speaker": {
+                              "type": "string",
+                              "enum": [
+                                "agent",
+                                "other"
+                              ]
+                            },
+                            "text": {
+                              "type": "string"
+                            },
+                            "atSeconds": {
+                              "type": "number",
+                              "minimum": 0
+                            }
+                          },
+                          "required": [
+                            "speaker",
+                            "text",
+                            "atSeconds"
+                          ]
+                        }
+                      },
+                      "text": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "turns",
+                      "text"
+                    ]
+                  },
+                  "recordingUrl": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "providerCallId": {
+                    "type": "string"
+                  },
+                  "summary": {
+                    "type": "string"
+                  },
+                  "artifacts": {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "additionalProperties": {
+                      "type": "string"
+                    }
+                  },
+                  "humanFollowUp": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "caveats": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "status",
+                  "durationSeconds",
+                  "transcript",
+                  "recordingUrl",
+                  "providerCallId",
+                  "summary",
+                  "artifacts",
+                  "humanFollowUp",
+                  "caveats"
+                ]
               },
               {
                 "type": "null"
               }
             ]
           },
-          "platform_fee": {
+          "output_hash": {
             "anyOf": [
               {
                 "type": "string",
-                "pattern": "^\\d+$"
+                "pattern": "^[0-9a-f]{64}$"
               },
               {
                 "type": "null"
@@ -494,54 +375,18 @@
         },
         "required": [
           "id",
-          "buyer_id",
-          "task_id",
-          "experience_id",
-          "amount",
-          "collected_amount",
-          "platform_fee"
-        ]
-      }
-    },
-    "allocations": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "minLength": 1
-          },
-          "order_id": {
-            "type": "string",
-            "minLength": 1
-          },
-          "recipient_id": {
-            "type": "string",
-            "minLength": 1
-          },
-          "amount": {
-            "type": "string",
-            "pattern": "^\\d+$"
-          },
-          "payout_receipt_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 1
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "required": [
-          "id",
-          "order_id",
-          "recipient_id",
-          "amount",
-          "payout_receipt_id"
+          "title",
+          "hirer_id",
+          "party_id",
+          "sokosumi_task_id",
+          "blockchain_identifier",
+          "hirer_task",
+          "input",
+          "input_hash",
+          "price",
+          "deadlines",
+          "result",
+          "output_hash"
         ]
       }
     },
@@ -560,9 +405,18 @@
               "registration",
               "funds_locked",
               "result_submitted",
-              "collection",
-              "payout",
-              "anchor"
+              "collection"
+            ]
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "tx_hash": {
@@ -599,6 +453,7 @@
         "required": [
           "id",
           "kind",
+          "job_id",
           "tx_hash",
           "verification",
           "explorer_url"
@@ -628,18 +483,19 @@
             "type": "string",
             "enum": [
               "agent_registered",
-              "task_received",
-              "search_completed",
-              "tool_call",
-              "result_evaluated",
-              "result_delivered",
-              "experience_published",
-              "order_placed",
+              "registry_search",
+              "job_started",
               "funds_locked",
-              "content_delivered",
-              "payment_collected",
-              "royalty_allocated",
-              "payout_confirmed"
+              "brief_parsed",
+              "dialing",
+              "transcript_turn",
+              "on_hold",
+              "call_ended",
+              "outcome_ready",
+              "result_submitted",
+              "result_delivered",
+              "hirer_resumed",
+              "payment_collected"
             ]
           },
           "label": {
@@ -649,29 +505,22 @@
             "default": true,
             "type": "boolean"
           },
-          "agent_id": {
-            "type": "string",
-            "minLength": 1
-          },
-          "task_id": {
-            "type": "string",
-            "minLength": 1
-          },
-          "experience_id": {
-            "type": "string",
-            "minLength": 1
-          },
-          "order_id": {
-            "type": "string",
-            "minLength": 1
-          },
-          "allocation_id": {
+          "job_id": {
             "type": "string",
             "minLength": 1
           },
           "receipt_id": {
             "type": "string",
             "minLength": 1
+          },
+          "turn_index": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "hold_seconds": {
+            "type": "number",
+            "minimum": 0
           }
         },
         "required": [
@@ -690,12 +539,10 @@
     "mode",
     "network",
     "asset",
-    "platform_fee_bps",
-    "agents",
-    "tasks",
-    "experiences",
-    "orders",
-    "allocations",
+    "dispatch",
+    "hirers",
+    "parties",
+    "jobs",
     "receipts",
     "events"
   ]
