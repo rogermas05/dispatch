@@ -107,8 +107,32 @@ Evidence: `.local/checkpoint-1.json`.
 ### Phase 2T — Telephony spike (NEW, target: 2–3 h)
 **The only genuinely new risk the pivot introduces. Do it before anything else.**
 
-Pick a provider and prove a round trip early, because everything downstream
-assumes a call can actually be placed:
+Provider: **Telnyx AI Assistants**. Telnyx runs the real-time loop — recognition,
+turn-taking, barge-in, synthesis — so we supply intent and read back a transcript
+rather than building an audio pipeline. Implemented in
+`apps/worker/src/call/telnyx.ts` behind the same `CallProvider` interface as the
+mock, so the pipeline runs either way.
+
+Endpoints used (**REPORTED** from Telnyx docs; not yet exercised against a live
+key, so response shapes are read defensively):
+
+| Call | Purpose |
+|---|---|
+| `POST /v2/ai/assistants` | Create a per-call assistant carrying the brief |
+| `POST /v2/texml/ai_calls/{texml_app_id}` | Place the outbound call |
+| `GET /v2/ai/conversations?filter[assistant_id]=` | Correlate the conversation |
+| `GET /v2/ai/conversations/{id}/messages` | Read the transcript |
+| `DELETE /v2/ai/assistants/{id}` | Clean up |
+
+One ephemeral assistant per call. It costs a round trip, but each job has a
+different objective and authorization, and it guarantees one conversation maps to
+one call — no correlation guesswork when reading the transcript back.
+
+Needed from the operator: `TELNYX_API_KEY`, a **TeXML application ID**, and a
+**verified outbound number**.
+
+Prove a round trip early, because everything downstream assumes a call can
+actually be placed:
 
 - Provision a number and place one scripted outbound call to a line we control.
 - Capture a recording and a transcript. Confirm both are retrievable via API.

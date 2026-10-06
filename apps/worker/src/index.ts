@@ -4,6 +4,7 @@ import { hostname } from 'node:os';
 import { Journal } from './lib/journal.js';
 import { SokosumiClient } from './lib/sokosumi.js';
 import { MockCallProvider } from './call/mock.js';
+import { TelnyxCallProvider } from './call/telnyx.js';
 import type { CallProvider } from './call/provider.js';
 import { runBrief } from './agent.js';
 
@@ -30,6 +31,15 @@ function selectProvider(): CallProvider {
 	if (!configured || configured === 'mock') {
 		console.warn('[dispatch] TELEPHONY_PROVIDER unset — using the mock provider. No calls will be placed.');
 		return new MockCallProvider();
+	}
+	if (configured === 'telnyx') {
+		return new TelnyxCallProvider({
+			apiKey: required('TELNYX_API_KEY'),
+			texmlAppId: required('TELNYX_TEXML_APP_ID'),
+			fromNumber: required('TELNYX_FROM_NUMBER'),
+			model: process.env.TELNYX_MODEL,
+			voice: process.env.TELNYX_VOICE,
+		});
 	}
 	throw new Error(`unknown TELEPHONY_PROVIDER "${configured}"`);
 }
