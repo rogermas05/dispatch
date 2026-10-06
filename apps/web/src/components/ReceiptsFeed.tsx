@@ -8,21 +8,19 @@ import { VerificationBadge } from "./VerificationBadge.tsx";
 
 const KIND_LABELS: Record<ReceiptKind, string> = {
   registration: "Agent registration",
-  funds_locked: "Funds locked in escrow",
-  result_submitted: "Delivery hash on-chain",
+  funds_locked: "Funds locked + input hash",
+  result_submitted: "Transcript hash on-chain",
   collection: "Seller collection",
-  payout: "Royalty payout",
-  anchor: "Provenance anchor",
 };
 
 export function ReceiptsFeed({ feed, snapshot }: { feed: Feed; snapshot: Snapshot }) {
   const receipts = snapshot.receiptIds.map((id) => feed.receipts.find((r) => r.id === id)!).filter(Boolean);
   return (
-    <Panel className="flex-1" title="On-chain receipts" subtitle="Cardano Preprod transactions, newest first">
+    <Panel title="On-chain receipts" subtitle="Cardano Preprod transactions, newest first">
       {receipts.length === 0 ? (
         <p className="pt-6 text-center text-xs text-muted">No transactions yet.</p>
       ) : (
-        <ul className="flex h-full flex-col gap-1.5 overflow-y-auto pr-1">
+        <ul className="flex max-h-[232px] flex-col gap-1.5 overflow-y-auto pr-1">
           <AnimatePresence initial={false}>
             {receipts.map((r) => {
               const event = feed.events.find((e) => e.receipt_id === r.id);

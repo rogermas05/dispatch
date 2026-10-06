@@ -1,4 +1,4 @@
-import { FlaskConical, Radio } from "lucide-react";
+import { FlaskConical, Phone, Radio } from "lucide-react";
 import type { Feed } from "@token-origins/schema";
 
 export function Header({ feed }: { feed: Feed }) {
@@ -8,8 +8,8 @@ export function Header({ feed }: { feed: Feed }) {
       <div className="flex items-center gap-3">
         <Logo />
         <div>
-          <h1 className="text-lg font-semibold tracking-tight">Experience Network</h1>
-          <p className="text-[13px] text-ink-2">AI agents buy what other agents learned instead of solving it from scratch.</p>
+          <h1 className="text-lg font-semibold tracking-tight">{feed.dispatch.name}</h1>
+          <p className="text-[13px] text-ink-2">A voice agent that makes phone calls for people and for other AI agents. Paid per call on Cardano.</p>
         </div>
       </div>
       <div className="flex items-center gap-2 text-xs">
@@ -38,12 +38,8 @@ export function Header({ feed }: { feed: Feed }) {
 
 function Logo() {
   return (
-    <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden>
-      <rect width="34" height="34" rx="9" fill="var(--color-surface-2)" stroke="var(--color-line)" />
-      <path d="M10 23 L17 11 L24 23" fill="none" stroke="var(--color-ink-2)" strokeWidth="1.5" strokeLinecap="round" />
-      <circle cx="17" cy="11" r="3.2" fill="var(--color-agent-a)" stroke="var(--color-surface-2)" strokeWidth="2" />
-      <circle cx="10" cy="23" r="3.2" fill="var(--color-agent-b)" stroke="var(--color-surface-2)" strokeWidth="2" />
-      <circle cx="24" cy="23" r="3.2" fill="var(--color-agent-c)" stroke="var(--color-surface-2)" strokeWidth="2" />
-    </svg>
+    <span className="grid size-[34px] place-items-center rounded-[9px] border border-line bg-surface-2" aria-hidden>
+      <Phone size={17} strokeWidth={2.2} style={{ color: "var(--color-dispatch)" }} />
+    </span>
   );
 }

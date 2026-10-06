@@ -1,24 +1,24 @@
-// Color follows the entity everywhere on the dashboard: an agent and every
-// experience it created share one hue.
-import type { Feed } from "@token-origins/schema";
+// Color follows the entity everywhere on the dashboard: each hirer, its jobs and
+// its transcript bubbles share one hue; Dispatch has its own.
+import type { Feed, Hirer, Job } from "@token-origins/schema";
 
-export const AGENT_COLORS: Record<string, string> = {
-  agent_a: "var(--color-agent-a)",
-  agent_b: "var(--color-agent-b)",
-  agent_c: "var(--color-agent-c)",
-};
-
-export const NEUTRAL_MARK = "var(--color-neutral-mark)";
+export const DISPATCH_COLOR = "var(--color-dispatch)";
 export const TOKEN_COLOR = "var(--color-token)";
+export const NEUTRAL_MARK = "var(--color-neutral-mark)";
 
-export function agentColor(agentId: string | null | undefined): string {
-  return (agentId && AGENT_COLORS[agentId]) || NEUTRAL_MARK;
+export function hirerColor(hirer: Pick<Hirer, "kind"> | undefined): string {
+  if (!hirer) return NEUTRAL_MARK;
+  return hirer.kind === "agent" ? "var(--color-hirer-agent)" : "var(--color-hirer-human)";
 }
 
-export function experienceColor(feed: Feed, experienceId: string): string {
-  return agentColor(feed.experiences.find((e) => e.id === experienceId)?.creator_id);
+export function hirerOf(feed: Feed, job: Job | undefined): Hirer | undefined {
+  return job ? feed.hirers.find((h) => h.id === job.hirer_id) : undefined;
 }
 
-export function agentName(feed: Feed, agentId: string): string {
-  return feed.agents.find((a) => a.id === agentId)?.name ?? agentId;
+export function jobColor(feed: Feed, jobId: string | null | undefined): string {
+  return hirerColor(hirerOf(feed, feed.jobs.find((j) => j.id === jobId)));
+}
+
+export function partyName(feed: Feed, job: Job): string {
+  return feed.parties.find((p) => p.id === job.party_id)?.name ?? job.party_id;
 }

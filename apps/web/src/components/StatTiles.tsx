@@ -1,14 +1,12 @@
-import { ArrowDownRight } from "lucide-react";
 import { motion } from "motion/react";
-import type { ReactNode } from "react";
 import type { Feed } from "@token-origins/schema";
-import { formatAsset, percentChange } from "../lib/format.ts";
+import { formatAsset, formatDuration } from "../lib/format.ts";
 import type { Snapshot } from "../lib/replay.ts";
 
 interface TileProps {
   label: string;
   value: string;
-  detail: ReactNode;
+  detail: string;
 }
 
 function Tile({ label, value, detail }: TileProps) {
@@ -24,45 +22,23 @@ function Tile({ label, value, detail }: TileProps) {
       >
         {value}
       </motion.p>
-      <div className="mt-1.5 text-xs text-ink-2">{detail}</div>
+      <p className="mt-1.5 text-xs text-ink-2">{detail}</p>
     </div>
   );
 }
 
 export function StatTiles({ feed, snapshot }: { feed: Feed; snapshot: Snapshot }) {
-  const storyExperiences = feed.experiences.filter((e) => !e.seeded);
-  const purchases = Object.keys(snapshot.orders).length;
-  const comparisonTask = feed.tasks.find((t) => t.baseline);
-  const comparisonReady = comparisonTask && snapshot.tasks[comparisonTask.id]?.stage === "published";
-  const change = comparisonTask?.baseline ? percentChange(comparisonTask.baseline.tool_calls, comparisonTask.metrics.tool_calls) : null;
-
+  const asset = (units: bigint) => `${formatAsset(units, feed.asset.decimals)} ${feed.asset.symbol}`;
   return (
     <div className="grid grid-cols-4 gap-3">
+      <Tile label="Calls completed" value={String(snapshot.callsCompleted)} detail={`For ${feed.hirers.length} hirers: a person and an AI agent`} />
       <Tile
-        label="Experiences published"
-        value={`${snapshot.published.size} / ${storyExperiences.length}`}
-        detail="Signed, verified by a fixture, searchable"
+        label="Hold time absorbed"
+        value={snapshot.holdAbsorbedSeconds > 0 ? formatDuration(snapshot.holdAbsorbedSeconds * 1000) : "0s"}
+        detail="Time nobody had to spend listening to hold music"
       />
-      <Tile label="Experiences bought and reused" value={String(purchases)} detail="Each through Masumi escrow on Cardano" />
-      <Tile
-        label="Tool calls vs. solving cold"
-        value={comparisonReady && change !== null ? `${change}%` : "–"}
-        detail={
-          comparisonReady && comparisonTask?.baseline ? (
-            <span className="inline-flex items-center gap-1">
-              <ArrowDownRight size={13} style={{ color: "var(--color-good)" }} aria-label="fewer" />
-              {comparisonTask.metrics.tool_calls} vs {comparisonTask.baseline.tool_calls} on the same fixture
-            </span>
-          ) : (
-            "Shown once Task 2 finishes"
-          )
-        }
-      />
-      <Tile
-        label="Royalties paid to contributors"
-        value={`${formatAsset(snapshot.paidTotal, feed.asset.decimals)} ${feed.asset.symbol}`}
-        detail={`${snapshot.paidAllocations.size} of ${feed.allocations.length} payouts confirmed`}
-      />
+      <Tile label="Collected by Dispatch" value={asset(snapshot.collectedTotal)} detail={`${asset(snapshot.lockedTotal)} still locked in escrow`} />
+      <Tile label="On-chain commitments" value={String(snapshot.commitments)} detail="Input and transcript hashes: tamper-evident" />
     </div>
   );
 }

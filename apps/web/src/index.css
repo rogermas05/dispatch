@@ -15,9 +15,9 @@
   --color-ink-2: #c3c2b7;
   --color-muted: #898781;
 
-  --color-agent-a: #3987e5;
-  --color-agent-b: #d95926;
-  --color-agent-c: #199e70;
+  --color-hirer-human: #3987e5;
+  --color-hirer-agent: #d95926;
+  --color-dispatch: #199e70;
   --color-token: #c98500;
   --color-neutral-mark: #5f5e5a;
 
@@ -61,8 +61,19 @@ body {
   animation: pulse-ring 1.4s ease-out infinite;
 }
 
+@keyframes call-line {
+  to {
+    stroke-dashoffset: -24;
+  }
+}
+
+.call-line {
+  animation: call-line 0.6s linear infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .pulse-ring {
+  .pulse-ring,
+  .call-line {
     animation: none;
   }
 }
