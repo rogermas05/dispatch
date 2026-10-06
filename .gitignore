@@ -1,0 +1,47 @@
+# ─── Secrets: nothing in here may ever be committed ───────────────────────
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.seed
+seed.txt
+wallet*.json
+**/secrets/
+
+# ─── Evidence snapshots (contain wallet addresses / tx data; curated by hand)
+# Checkpoint artifacts live in .local/. Promote sanitized copies to docs/evidence/
+# when they are ready to be part of the public submission.
+.local/*
+!.local/.gitkeep
+
+# ─── Masumi Payment Service / Postgres local state ────────────────────────
+masumi-payment-service/
+pgdata/
+*.sqlite
+*.sqlite3
+
+# ─── Node ─────────────────────────────────────────────────────────────────
+node_modules/
+.pnpm-store/
+dist/
+build/
+out/
+.next/
+.vercel/
+.turbo/
+*.tsbuildinfo
+npm-debug.log*
+pnpm-debug.log*
+yarn-error.log*
+
+# ─── eve / agent runtime ──────────────────────────────────────────────────
+.eve/
+.agent-cache/
+
+# ─── OS / editor ──────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
