@@ -55,8 +55,16 @@ export interface TelnyxConfig {
 
 interface TelnyxMessage {
 	role?: string;
-	content?: string;
+	/** The spoken text. Note: `content` exists on the object but is always null. */
+	text?: string | null;
+	sent_at?: string;
 	created_at?: string;
+}
+
+interface TelnyxConversation {
+	id: string;
+	created_at?: string;
+	metadata?: { assistant_id?: string; to?: string; from?: string; call_leg_id?: string };
 }
 
 export class TelnyxCallProvider implements CallProvider {
@@ -154,8 +162,10 @@ HARD RULES
 			});
 			return await this.awaitTranscript(assistantId, brief.maxDurationSeconds);
 		} finally {
-			// Ephemeral assistants would otherwise accumulate on the account.
+			// Both records outlive the call, and the application outlives the
+			// assistant, so each is removed explicitly.
 			await this.deleteOwnAssistant(assistantId).catch(() => {});
+			await this.deleteOwnTexmlApp(assistantId).catch(() => {});
 		}
 	}
 
@@ -169,17 +179,33 @@ HARD RULES
 	 * healthcare system whose applications carry their own webhooks.
 	 */
 	private async resolveTexmlApp(assistantId: string): Promise<string> {
-		const expected = `ai-assistant-${assistantId}`;
-		// Provisioning is not instantaneous; it appeared within ~3s in testing.
-		for (let attempt = 0; attempt < 5; attempt++) {
+		// The id already carries an "assistant-" prefix, so the application is
+		// named `ai-${assistantId}` — not `ai-assistant-${assistantId}`.
+		const expected = `ai-${assistantId}`;
+		// Provisioning is asynchronous and its latency varies: observed at ~3s
+		// once and over 10s another time, so this waits generously rather than
+		// failing a call that was moments from being placeable. Brackets are
+		// percent-encoded because Telnyx rejects them raw.
+		const deadline = Date.now() + 45_000;
+		while (Date.now() < deadline) {
 			const list = await this.api<{ data?: Array<{ id: string; friendly_name?: string }> }>(
-				'/texml_applications?page[size]=25',
+				'/texml_applications?page%5Bsize%5D=50',
 			);
 			const match = list.data?.find((a) => a.friendly_name === expected);
 			if (match) return match.id;
-			await new Promise((r) => setTimeout(r, 2_000));
+			await new Promise((r) => setTimeout(r, 3_000));
 		}
-		throw new ProviderError(`no TeXML application appeared for assistant ${assistantId}`, true);
+		throw new ProviderError(`no TeXML application appeared for assistant ${assistantId} within 45s`, true);
+	}
+
+	/** Remove the TeXML application Telnyx provisioned alongside our assistant. */
+	private async deleteOwnTexmlApp(assistantId: string): Promise<void> {
+		const expected = `ai-${assistantId}`;
+		const list = await this.api<{ data?: Array<{ id: string; friendly_name?: string }> }>(
+			'/texml_applications?page%5Bsize%5D=50',
+		);
+		const match = list.data?.find((a) => a.friendly_name === expected);
+		if (match) await this.api(`/texml_applications/${match.id}`, { method: 'DELETE' });
 	}
 
 	/**
@@ -214,10 +240,13 @@ HARD RULES
 			await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
 
 			if (!conversationId) {
-				const list = await this.api<{ data?: Array<{ id: string }> }>(
-					`/ai/conversations?filter[assistant_id]=${encodeURIComponent(assistantId)}`,
-				).catch(() => ({ data: [] }));
-				conversationId = list.data?.[0]?.id ?? null;
+				// The assistant id lives in metadata, not as a query filter — a
+				// filter[assistant_id] parameter is accepted and silently ignored,
+				// which is why this matched nothing until a live call exposed it.
+				const list = await this.api<{ data?: TelnyxConversation[] }>(
+					'/ai/conversations?page%5Bsize%5D=25',
+				).catch(() => ({ data: [] as TelnyxConversation[] }));
+				conversationId = list.data?.find((c) => c.metadata?.assistant_id === assistantId)?.id ?? null;
 				if (!conversationId) continue;
 			}
 
@@ -247,13 +276,28 @@ HARD RULES
 	}
 }
 
+export { toTranscript as __test_toTranscript };
+
 function toTranscript(messages: TelnyxMessage[]): Transcript {
-	const turns = messages
-		.filter((m) => typeof m.content === 'string' && m.content.trim().length > 0)
-		.map((m, i) => ({
+	// Telnyx returns newest-first. A transcript read backwards is worse than no
+	// transcript, because it reads as a coherent conversation that never happened.
+	const ordered = [...messages].sort((a, b) => {
+		const ta = Date.parse(a.sent_at ?? a.created_at ?? '') || 0;
+		const tb = Date.parse(b.sent_at ?? b.created_at ?? '') || 0;
+		return ta - tb;
+	});
+	const start = Date.parse(ordered[0]?.sent_at ?? ordered[0]?.created_at ?? '') || 0;
+
+	const turns = ordered
+		.filter((m) => typeof m.text === 'string' && m.text.trim().length > 0)
+		.map((m) => ({
 			speaker: (m.role === 'assistant' ? 'agent' : 'other') as 'agent' | 'other',
-			text: m.content!.trim(),
-			atSeconds: i,
+			text: m.text!.trim(),
+			atSeconds: Math.max(0, Math.round(((Date.parse(m.sent_at ?? m.created_at ?? '') || start) - start) / 1000)),
 		}));
-	return { turns, text: turns.map((t) => `${t.speaker === 'agent' ? 'Dispatch' : 'Them'}: ${t.text}`).join('\n') };
+
+	return {
+		turns,
+		text: turns.map((t) => `${t.speaker === 'agent' ? 'Dispatch' : 'Them'}: ${t.text}`).join('\n'),
+	};
 }
