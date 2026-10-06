@@ -1,0 +1,27 @@
+{
+  "name": "token-origins",
+  "version": "1.0.0",
+  "description": "An AI agent that earns real money on Cardano.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rogermas05/token-origins.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/rogermas05/token-origins/issues"
+  },
+  "homepage": "https://github.com/rogermas05/token-origins#readme",
+  "devDependencies": {
+    "@masumi_network/sokosumi": "^1.0.4"
+  }
+}

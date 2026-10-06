@@ -15,7 +15,14 @@ after a task completed.
 
 ## Status
 
-Scaffold only. No checkpoints passed yet.
+Scaffold. No checkpoints passed yet. Local prereqs verified: Node v24.16.0,
+PostgreSQL 17.11, Docker 29.8.1, Sokosumi CLI 1.0.4 (project-local).
+
+Primary sources have been reconciled against the plan — see
+[`docs/FINDINGS.md`](docs/FINDINGS.md). Two findings change the build materially:
+the Sokosumi CLI **implements no payment path**, so Checkpoint 4 is entirely our own
+payment-service integration; and there is **no worker lease**, so nothing but our own
+journal prevents double-processing a task.
 
 | Checkpoint | What it proves | State |
 |---|---|---|
@@ -98,7 +105,11 @@ irrecoverably.
 6. **Workspace membership ≠ Coworker connection.** Joining an organization does not
    connect the Coworker to it. Connect explicitly and verify `GRANTED`.
 7. **Journal a task before writing to it.** Inspect any uncertain task before
-   restarting a worker.
+   restarting a worker. There is no server-side lease; this is the only protection
+   against double-processing that exists.
+8. **Three credential tiers, never mixed.** Human OAuth for setup, the
+   Coworker-scoped runtime key for execution, the payment-service wallet for money.
+   Never substitute human credentials for runtime authentication.
 
 ---
 
@@ -113,7 +124,9 @@ chmod 600 .env.local
 ```
 
 Full phase-by-phase build plan, including every checkpoint and the known failure
-modes: [`docs/PLAN.md`](docs/PLAN.md).
+modes: [`docs/PLAN.md`](docs/PLAN.md). Verified corrections to it, with sources:
+[`docs/FINDINGS.md`](docs/FINDINGS.md) — read this second, it overrides the plan
+where they disagree.
 
 Deployment steps are added at Phase 5.
 
