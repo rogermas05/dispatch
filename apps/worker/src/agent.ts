@@ -17,19 +17,45 @@ import type { CallBrief, CallOutcome, CallResult } from './lib/types.js';
 
 const MODEL = process.env.MODEL_ID ?? 'claude-sonnet-5-5';
 
+/**
+ * Tolerant on shape, strict on meaning.
+ *
+ * A model asked for a record will sometimes return a prose string, and rejecting
+ * the whole brief over that would fail a job whose actual content was fine. The
+ * fields that matter — the number and the authorization — stay strict.
+ */
 const briefSchema = z.object({
 	to: z.string().min(3),
 	objective: z.string().min(1),
 	authorization: z.string(),
-	context: z.record(z.string()).optional(),
-	maxDurationSeconds: z.number().int().positive().max(1800),
+	context: z
+		.union([z.record(z.string()), z.string(), z.null()])
+		.optional()
+		.transform((v) => (typeof v === 'string' ? (v.trim() ? { notes: v } : undefined) : (v ?? undefined))),
+	maxDurationSeconds: z.coerce.number().int().positive().max(1800).default(900),
 });
 
 const outcomeSchema = z.object({
 	summary: z.string(),
-	artifacts: z.record(z.string()),
-	humanFollowUp: z.string().nullable(),
-	caveats: z.array(z.string()),
+	// Models return numbers, nested objects and nulls here. The values are for a
+	// human to read, so coerce rather than fail a completed call over formatting.
+	artifacts: z
+		.union([z.record(z.unknown()), z.null()])
+		.optional()
+		.transform((v) =>
+			Object.fromEntries(
+				Object.entries(v ?? {})
+					.filter(([, x]) => x !== null && x !== undefined && x !== '')
+					.map(([k, x]) => [k, typeof x === 'string' ? x : JSON.stringify(x)]),
+			),
+		),
+	humanFollowUp: z.string().nullable().optional().transform((v) => v ?? null),
+	caveats: z
+		.union([z.array(z.unknown()), z.string(), z.null()])
+		.optional()
+		.transform((v) =>
+			typeof v === 'string' ? [v] : (v ?? []).map((x) => (typeof x === 'string' ? x : JSON.stringify(x))),
+		),
 });
 
 function client(): Anthropic {
@@ -38,7 +64,7 @@ function client(): Anthropic {
 	return new Anthropic({ apiKey });
 }
 
-async function structured<T>(prompt: string, system: string, schema: z.ZodType<T>): Promise<T> {
+async function structured<S extends z.ZodTypeAny>(prompt: string, system: string, schema: S): Promise<z.output<S>> {
 	const res = await client().messages.create({
 		model: MODEL,
 		max_tokens: 2048,

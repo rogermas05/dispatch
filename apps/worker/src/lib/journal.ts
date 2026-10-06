@@ -30,6 +30,9 @@ export interface JournalEntry {
 	attempts: number;
 	error?: string;
 	resultPath?: string;
+	/** Sokosumi event IDs — submissions must cite these for a completed task. */
+	startEventId?: string;
+	completeEventId?: string;
 }
 
 export class Journal {
@@ -70,6 +73,9 @@ export class Journal {
 
 		if (existing) {
 			if (existing.state === 'completed') return null;
+			if (existing.error === 'reset by --resume') {
+				// An operator has asserted no other worker holds this task.
+			} else
 			if (existing.state === 'running') {
 				// Either we crashed mid-run, or a second worker is live right now.
 				// We cannot tell these apart from here, and guessing wrong means a

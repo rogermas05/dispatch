@@ -39,8 +39,12 @@ Full thesis, including pricing and the boundaries we hold: [`docs/PRODUCT.md`](d
 
 ## Status
 
-**Checkpoints 0 and 1 are VERIFIED.** Authentication, organization, Vendor,
-Coworker and a `GRANTED` workspace grant all exist on Preprod.
+**Checkpoints 0, 1, 2T and 2 are VERIFIED.** Dispatch has placed a real phone
+call, and a Sokosumi task has run end to end through the worker to `COMPLETED`.
+The payment service is seeded and the seller wallet holds 100 test ADA.
+
+Next: on-chain registration, which needs a publicly reachable `apiBaseUrl` —
+so Phase 5 hosting has to come before Checkpoint 3 rather than after.
 
 Local prereqs verified: Node v24.16.0, PostgreSQL 17.11, Docker 29.8.1, Sokosumi
 CLI 1.0.4 (project-local), Anthropic API reachable.
@@ -50,8 +54,8 @@ CLI 1.0.4 (project-local), Anthropic API reachable.
 | 0 | Prereqs installed, Sokosumi auth works, `.env.local` exists | ✅ **VERIFIED** |
 | 1 | Vendor + Coworker created, `workspaceAccess.status: GRANTED` | ✅ **VERIFIED** |
 | 2T | One real outbound call placed, with transcript | ✅ **VERIFIED** |
-| 2 | A task reaches `COMPLETED` with a real call result — unpaid | ☐ |
-| 3 | `RegistrationConfirmed` on-chain; `/availability` 200; wallet funded | ☐ |
+| 2 | A task reaches `COMPLETED` with a real result — unpaid | ✅ **VERIFIED** |
+| 3 | `RegistrationConfirmed` on-chain; `/availability` 200; wallet funded | ◐ wallet funded (100 tADA); registration needs a public `apiBaseUrl` |
 | 4 | **One paid call settles — confirmed collection tx, USDM received** | ☐ |
 | 5 | Everything survives with all local machines off | ☐ |
 | 6 | Connected to the TOKEN2049 org, submission assembled | ☐ |

@@ -58,6 +58,21 @@ async function main(): Promise<void> {
 	});
 	const provider = selectProvider();
 
+	// Operator-supervised recovery for a task left RUNNING by a crashed run.
+	// The journal deliberately refuses these on its own, because from inside the
+	// process a crash and a live second worker look identical. A human asserting
+	// which it was is the missing information, so this path requires one.
+	const resumeIdx = process.argv.indexOf('--resume');
+	if (resumeIdx >= 0) {
+		const taskId = process.argv[resumeIdx + 1];
+		if (!taskId) throw new Error('--resume requires a task id');
+		console.warn(`[dispatch] resuming ${taskId} on operator instruction — confirm no other worker is running`);
+		journal.advance(taskId, 'failed', { error: 'reset by --resume' });
+		if (!journal.claim(taskId)) throw new Error(`journal still refuses ${taskId}; inspect it by hand`);
+		await handle(taskId, { journal, sokosumi, provider, resultDir, alreadyRunning: true });
+		return;
+	}
+
 	// Refuse to start if a previous run left anything unaccounted for. Restarting
 	// over an ambiguous task is exactly how a task gets charged twice.
 	const stuck = journal.stuck();
@@ -95,18 +110,28 @@ async function main(): Promise<void> {
 
 async function handle(
 	taskId: string,
-	deps: { journal: Journal; sokosumi: SokosumiClient; provider: CallProvider; resultDir: string },
+	deps: {
+		journal: Journal;
+		sokosumi: SokosumiClient;
+		provider: CallProvider;
+		resultDir: string;
+		alreadyRunning?: boolean;
+	},
 ): Promise<void> {
-	const { journal, sokosumi, provider, resultDir } = deps;
+	const { journal, sokosumi, provider, resultDir, alreadyRunning } = deps;
 	try {
-		const started = await sokosumi.start(taskId);
-		journal.advance(taskId, 'running');
-		if (started.status !== 'RUNNING') {
-			throw new Error(`expected RUNNING, got ${started.status}`);
+		// Read the brief before claiming it remotely, so a failure to read does
+		// not leave a task RUNNING with nobody working on it.
+		const brief = await sokosumi.describe(taskId);
+		if (!alreadyRunning) {
+			const started = await sokosumi.start(taskId);
+			journal.advance(taskId, 'running', { startEventId: started.eventId });
+		} else {
+			journal.advance(taskId, 'running');
 		}
 
 		const outcome = await runBrief(
-			{ name: started.name ?? '', description: started.description ?? '' },
+			{ name: brief.name ?? '', description: brief.description ?? '' },
 			provider,
 		);
 
@@ -119,8 +144,8 @@ async function handle(
 		const resultPath = join(resultDir, `${taskId}.json`);
 		writeFileSync(resultPath, body, 'utf8');
 
-		await sokosumi.complete(taskId, resultPath);
-		journal.advance(taskId, 'completed', { resultPath });
+		const completed = await sokosumi.complete(taskId, resultPath);
+		journal.advance(taskId, 'completed', { resultPath, completeEventId: completed.eventId });
 		console.log(`[dispatch] ${taskId} completed — ${outcome.status}: ${outcome.summary}`);
 	} catch (err) {
 		const message = err instanceof Error ? err.message : String(err);
