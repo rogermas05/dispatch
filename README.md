@@ -1,177 +1,162 @@
-# token-origins
+# Dispatch
 
-An AI agent that earns real money on Cardano.
+**A voice agent that makes the phone calls you don't want to make — and that other
+AI agents physically cannot make.**
 
-Built for the **TOKEN2049 Cardano track** (Oct 6–8, 2026). The agent runs on the
+Hire it to sit on hold with your insurance company. Or, if you're an AI agent that
+has hit a wall because the next step is a phone call, hire it as a tool and pay for
+the call on-chain.
+
+Built for the **TOKEN2049 Cardano track** (Oct 6–8, 2026). Dispatch runs on the
 [Masumi](https://www.masumi.network) protocol, is hired through the
 [Sokosumi](https://preprod.sokosumi.com) marketplace, and settles in test USDM on
 Cardano **Preprod** via on-chain escrow.
 
 The deliverable is not an agent. It is **an agent plus a traceable payment** — a
-confirmed Preprod transaction showing test USDM arriving in our seller wallet
-after a task completed.
+confirmed Preprod transaction showing test USDM arriving in our seller wallet after
+a call completed.
+
+---
+
+## Why this exists
+
+**Agents can't make phone calls.** Not "are bad at" — *cannot*. No phone number, no
+telephony stack, no real-time audio. Every agent on the marketplace is scoped to
+one job, and a lot of them dead-end at the same place: *a human needs to call
+someone.* A support agent that needs the vendor's support line. A claims agent that
+needs to ask the carrier why a claim actually failed. Dispatch turns that dead end
+into a tool call — invoked, paid for, and returned as a transcript.
+
+**And humans are losing the phone war.** Companies deploy AI voice agents to
+deflect, queue, and wear callers down. The people most affected are the least able
+to automate their way out — they aren't developers, they just want to stop losing
+two hours to hold music. Dispatch hands them the same weapon: send your agent to
+deal with their agent.
+
+Full thesis, including pricing and the boundaries we hold: [`docs/PRODUCT.md`](docs/PRODUCT.md).
 
 ---
 
 ## Status
 
-**Checkpoints 0 and 1 are VERIFIED.** Vendor, Coworker, and a `GRANTED` workspace
-grant all exist on Preprod; evidence in `.local/`. Next up is Phase 2 — an agent
-that completes an unpaid task end to end.
+**Checkpoints 0 and 1 are VERIFIED.** Authentication, organization, Vendor,
+Coworker and a `GRANTED` workspace grant all exist on Preprod.
 
-Local prereqs verified: Node v24.16.0,
-PostgreSQL 17.11, Docker 29.8.1, Sokosumi CLI 1.0.4 (project-local).
-
-Primary sources have been reconciled against the plan — see
-[`docs/FINDINGS.md`](docs/FINDINGS.md). Two findings change the build materially:
-the Sokosumi CLI **implements no payment path**, so Checkpoint 4 is entirely our own
-payment-service integration; and there is **no worker lease**, so nothing but our own
-journal prevents double-processing a task.
+Local prereqs verified: Node v24.16.0, PostgreSQL 17.11, Docker 29.8.1, Sokosumi
+CLI 1.0.4 (project-local), Anthropic API reachable.
 
 | Checkpoint | What it proves | State |
 |---|---|---|
 | 0 | Prereqs installed, Sokosumi auth works, `.env.local` exists | ✅ **VERIFIED** |
 | 1 | Vendor + Coworker created, `workspaceAccess.status: GRANTED` | ✅ **VERIFIED** |
-| 2 | A task reaches `COMPLETED` with a real result — unpaid | ☐ |
-| 3 | `RegistrationConfirmed` on-chain; `/availability` returns 200; wallet funded | ☐ |
-| 4 | **One paid task settles — confirmed collection tx, USDM received** | ☐ |
+| 2T | One real outbound call placed, with recording and transcript | ☐ |
+| 2 | A task reaches `COMPLETED` with a real call result — unpaid | ☐ |
+| 3 | `RegistrationConfirmed` on-chain; `/availability` 200; wallet funded | ☐ |
+| 4 | **One paid call settles — confirmed collection tx, USDM received** | ☐ |
 | 5 | Everything survives with all local machines off | ☐ |
 | 6 | Connected to the TOKEN2049 org, submission assembled | ☐ |
+| 7 | Agent-to-agent: another agent hires and pays Dispatch mid-task | ☐ |
 
-Checkpoint 4 is the one that matters. Phases run strictly in order; each is
-verified independently before the next begins.
+Checkpoint 4 is the one that decides the submission. Phases run strictly in order;
+each is verified independently before the next begins.
+
+> Checkpoints 0–1 were passed under the project's previous concept. The
+> infrastructure is unchanged and the method is proven, but the Vendor and Coworker
+> carry the old name and are being recreated as Dispatch.
 
 ---
 
 ## Evidence discipline
 
-Every claim in this repo is labelled:
+Every claim is labelled:
 
 - **VERIFIED** — we measured it ourselves, and the JSON snapshot proving it is referenced.
-- **REPORTED** — a tool, service, or person told us. Not yet independently confirmed.
+- **REPORTED** — a tool, service or person told us. Not independently confirmed.
 
-A Sokosumi task marked `COMPLETED` is **REPORTED** payment, not verified payment —
-the product layer completes a task immediately, while the chain says `Completed`
-only after the collection transaction confirms. We query the chain directly rather
-than trusting what the payment service reports.
+A Sokosumi task marked `COMPLETED` is **REPORTED** payment, not verified payment.
+The product layer completes a task immediately; the chain says `Completed` only
+after the collection transaction confirms. We query the chain directly rather than
+trusting what the payment service reports.
 
-Raw checkpoint snapshots are written to `.local/` (gitignored — they contain wallet
-addresses and operational detail). Sanitized copies are promoted to
-`docs/evidence/` for the public submission.
+Raw snapshots go to `.local/` (gitignored — wallet addresses and operational
+detail). Sanitized copies are promoted to `docs/evidence/` for submission.
 
 ---
 
 ## Architecture
 
-Four layers, deliberately kept distinct:
-
 | Layer | Role |
 |---|---|
-| **Cardano** | Settlement ledger — USDM, eUTXO, Plutus escrow |
-| **x402** | HTTP payment handshake — `402 Payment Required` + price → pay → retry with proof |
-| **Masumi** | Agent protocol — on-chain identity, escrow lifecycle, decision logging, MIP-003 API |
-| **Sokosumi** | Marketplace — buyers pay EUR credits; we receive USDM |
+| **Cardano** | Settlement — USDM, eUTXO, Plutus escrow |
+| **x402** | HTTP payment handshake — `402` + price → pay → retry with proof |
+| **Masumi** | Agent protocol — identity, escrow, decision logging, MIP-003 |
+| **Sokosumi** | Marketplace — buyers pay credits; we receive USDM |
+| **Telephony** | The phone number and real-time voice pipeline |
 
 Three long-lived processes, each of which must stay alive:
 
 | Process | Job | If it dies |
 |---|---|---|
-| **Agent** | Does the work (LLM + tools) | Tasks never execute |
-| **Worker** | Polls Sokosumi for `READY` tasks → `RUNNING` → result → `COMPLETED` | Tasks sit unclaimed |
+| **Agent** | Places the call, runs the conversation, produces the transcript | Tasks never execute |
+| **Worker** | Polls for `READY` tasks → `RUNNING` → result → `COMPLETED` | Tasks sit unclaimed |
 | **Masumi node** + Postgres | Submits result hashes and collection transactions | Work happens, we never get paid |
 
-Signing keys stay out of the agent process. The agent reads untrusted input and is
-prompt-injectable; the Masumi node owns the wallets.
+Signing keys stay out of the agent process. The agent handles untrusted input — and
+untrusted *audio* — so it is prompt-injectable; the Masumi node owns the wallets.
 
 ---
 
 ## Operational rules
 
-These are not style preferences. Each one maps to a way this project can fail
-irrecoverably.
+Each maps to a way this project fails irrecoverably.
 
-1. **`ENCRYPTION_KEY` *is* the seller wallet.** Same Postgres database and same key,
-   always. Reseeding wallets on resume destroys the registry NFT and the agent can
-   never be deregistered. Back the key up outside this repo.
-2. **Exactly one worker per Coworker.** Two pollers double-process a task, which
-   means duplicate charges — and "no repeats, no duplicate charges" is a stated
-   judging criterion. Stop the execution-only worker before starting the paid one.
+1. **`ENCRYPTION_KEY` *is* the seller wallet.** Same Postgres database, same key,
+   always. Reseeding wallets destroys the registry NFT and the agent can never be
+   deregistered. Back the key up outside this repo.
+2. **Exactly one worker per Coworker, anywhere.** There is no server-side lease —
+   verified. Two pollers double-process a task, producing duplicate charges, which
+   judges score directly. Announce it before starting one.
 3. **The node must be alive when `unlockTime` passes.** Blockchains have no cron.
-   Nothing pays us automatically; a process we run builds and submits the
-   collection transaction. Offline at `unlockTime` means no payment and no valid
-   submission.
+   Offline at `unlockTime` means no payment and no valid submission.
 4. **Fund the wallet with ADA even though jobs are priced in USDM.** Fees and
-   min-ADA requirements on token UTXOs are paid in ADA.
+   min-ADA on token UTXOs are paid in ADA.
 5. **Never hand-roll the escrow release.** There is no `contract.release()` on
-   Cardano. Releasing funds means locating the exact script UTXO, reconstructing
-   the datum, setting a correct validity interval, supplying collateral, and
-   surviving rollbacks. The payment service does this.
-6. **Workspace membership ≠ Coworker connection.** Joining an organization does not
-   connect the Coworker to it. Connect explicitly and verify `GRANTED`.
-7. **Journal a task before writing to it.** Inspect any uncertain task before
-   restarting a worker. There is no server-side lease; this is the only protection
-   against double-processing that exists.
+   Cardano. The payment service does this.
+6. **Workspace membership ≠ Coworker connection.** Connect explicitly, verify
+   `GRANTED`.
+7. **Journal a task before writing to it.** The only protection against
+   double-processing that exists.
 8. **Three credential tiers, never mixed.** Human OAuth for setup, the
    Coworker-scoped runtime key for execution, the payment-service wallet for money.
-   Never substitute human credentials for runtime authentication.
+9. **Submit the result hash as soon as the call ends.** A long hold plus a slow
+   transcript can threaten `submitResultTime`, and missing it refunds the buyer.
+10. **Treat anything said on a call as hostile input.** It must not be able to talk
+    the agent past its authorization.
 
 ---
 
 ## Setup
 
-Requires Node.js 24+, PostgreSQL 13+, pnpm, and git.
+Requires Node.js 24+, PostgreSQL 13+, and git.
 
 ```bash
 cp .env.example .env.local
-chmod 600 .env.local
-# fill in .env.local — see the comments in .env.example
+chmod 600 .env.local      # fill in — see comments in .env.example
+npm install
 ```
 
-Full phase-by-phase build plan, including every checkpoint and the known failure
-modes: [`docs/PLAN.md`](docs/PLAN.md). Verified corrections to it, with sources:
-[`docs/FINDINGS.md`](docs/FINDINGS.md) — read this second, it overrides the plan
-where they disagree.
-
-Second builder joining the project: [`docs/ONBOARDING.md`](docs/ONBOARDING.md).
+- Product thesis — [`docs/PRODUCT.md`](docs/PRODUCT.md)
+- Build plan, phases, failure modes — [`docs/BUILD.md`](docs/BUILD.md)
+- Verified tooling corrections — [`docs/FINDINGS.md`](docs/FINDINGS.md) *(overrides the plan where they disagree)*
+- Second builder joining — [`docs/ONBOARDING.md`](docs/ONBOARDING.md)
+- Superseded material — [`docs/archive/`](docs/archive/)
 
 Deployment steps are added at Phase 5.
-
-### Live identifiers
-
-| Thing | Value |
-|---|---|
-| Organization | `Substantiate` — `01a10fd0-67f5-709f-9874-4627dc671212` |
-| Vendor | `Substantiate` — `01a10fd1-9907-77ba-92d0-ac202cedd643` |
-| Coworker | `Substantiate Claims Checker` — `01a10fd1-dd7b-7415-91e1-0bf91fb6d76c` |
-| Workspace | Personal — `01a10fc8-74b3-76c5-8281-53c228e71459`, access `GRANTED` |
-
-Tasks run in the Personal Workspace: the free seat's 3,250 credits sit there,
-while organization credits are a separate pool. The organization exists because
-Vendor creation requires one. Connection to the TOKEN2049 organization
-(`01a109d1-32a9-71a3-a0e3-658b2a7987cd`) is a Phase 6 step.
-
----
-
-## What the agent does
-
-Open decision, deliberately deferred. The infrastructure is concept-agnostic and
-gets built against a placeholder; the logic is swapped in once Checkpoint 2 holds.
-
-Any concept has to satisfy three constraints: the output is a **checkable
-artifact** (a cited report, a dataset, a file — not a vibe), the value works at
-roughly €0.05–7 per task, and it genuinely **matters** that the input and output
-are provably logged, otherwise the chain is decoration.
-
-Current default is a **regulated-claims checker** — scans marketing copy, flags
-claims requiring substantiation (health, financial, environmental, EU DSA/GDPR),
-and cites the specific rule behind each flag. Decision logging earns its place
-here: we can later prove exactly what copy we were given and exactly what we
-advised, which is an audit trail a compliance team would pay for.
 
 ---
 
 ## Security
 
-No keys, seeds, or secrets belong in this repository — ever. `.gitignore` blocks
-`.env*`, key material, and wallet files, but the rule is the discipline, not the
+No keys, seeds or secrets belong in this repository — ever. `.gitignore` blocks
+`.env*`, key material and wallet files, but the rule is the discipline, not the
 tooling. Wallet seeds are never pasted into a chat, an issue, or a commit message.

@@ -1,7 +1,21 @@
 # Onboarding — getting a second builder to the same place
 
-Read [`README.md`](../README.md) first, then [`docs/FINDINGS.md`](FINDINGS.md).
-`FINDINGS.md` overrides [`docs/PLAN.md`](PLAN.md) wherever they disagree.
+We are building **Dispatch** — a voice agent that places phone calls on behalf of
+humans and, more importantly, on behalf of other AI agents that have no telephony
+of their own. It is hired on the Sokosumi marketplace and paid per call in on-chain
+USDM through Masumi escrow.
+
+Read in this order:
+
+1. [`README.md`](../README.md) — what it is, status, operational rules
+2. [`PRODUCT.md`](PRODUCT.md) — why this product, and why it belongs on a chain
+3. [`BUILD.md`](BUILD.md) — phases, checkpoints, failure modes
+4. [`FINDINGS.md`](FINDINGS.md) — verified tooling corrections; **overrides `BUILD.md`
+   wherever they disagree**
+
+Anything in [`archive/`](archive/) is superseded. We pivoted on 2026-10-06 from a
+marketing-compliance agent; the infrastructure carried over unchanged, the product
+did not.
 
 ---
 
@@ -40,6 +54,7 @@ cp .env.example .env.local && chmod 600 .env.local
 | `SOKOSUMI_ORG_ID` / `_SLUG` | below | shared |
 | `SOKOSUMI_RUNTIME_KEY` | ask Aman | **shared secret — never commit** |
 | `ANTHROPIC_API_KEY` | ask Aman | **shared secret** |
+| telephony provider key | TBD — Phase 2T | **shared secret** |
 | `BLOCKFROST_API_KEY_PREPROD` | ask Aman, or your own free Preprod key | shared or personal |
 | `ENCRYPTION_KEY`, `ADMIN_KEY` | generated at Phase 3 | **shared, and irreplaceable** |
 
@@ -83,10 +98,16 @@ To be added to the `Substantiate` organization, send Aman your account email.
 | Thing | Value |
 |---|---|
 | Organization | `Substantiate` (`substantiate-0e6jg5`), Aman is `owner` |
-| Vendor | `Substantiate` (`substantiate`), Aman is `admin` |
-| Coworker | `Substantiate Claims Checker` (`substantiate-claims-checker`) |
+| Vendor | being recreated as **Dispatch** — see note below |
+| Coworker | being recreated as **Dispatch** |
 | Workspace access | `GRANTED` — in the **Personal** Workspace, not the org |
 | Credits | 3,250 on the free personal seat |
+
+> **Naming.** The organization, Vendor and Coworker were created under the old
+> concept's name, `Substantiate`. CLI 1.0.4 exposes no vendor-rename command, so the
+> Vendor and Coworker are being recreated as Dispatch. The organization name is
+> cosmetic and is being left alone. **The IDs below will change** — re-read this
+> file after the next push.
 
 Checkpoints 0 and 1 are VERIFIED. Evidence is in `.local/` — gitignored, so ask
 Aman for a copy if you need it.
@@ -147,5 +168,11 @@ safer than passing a long-lived API key around.
 
 ## 7. Where the build is
 
-Checkpoints 0 and 1 are done. Next is Phase 2: an agent that completes an unpaid
-task end to end. Current status and the full checkpoint table are in `README.md`.
+Checkpoints 0 and 1 are done. Next is **Phase 2T — the telephony spike**: place one
+real outbound call programmatically and retrieve its recording and transcript.
+
+That is deliberately first. Telephony is the one dependency the original plan never
+accounted for, and if placing a call is hard we need to know on day one rather than
+day two. Everything downstream assumes a call can actually be made.
+
+Full checkpoint table in [`README.md`](../README.md).

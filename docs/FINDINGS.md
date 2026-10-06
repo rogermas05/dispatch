@@ -1,6 +1,7 @@
-# Findings — reconciling `docs/PLAN.md` against primary sources
+# Findings — reconciling the build plan against primary sources
 
-Closed on 2026-10-05, before Phase 0. Every claim here is labelled **VERIFIED**
+Closed on 2026-10-05, before Phase 0. Still current after the 2026-10-06 pivot
+to Dispatch — every finding here is about tooling, not product. Every claim here is labelled **VERIFIED**
 (we ran it or read it in shipped source) or **REPORTED** (a page or doc told us).
 
 Primary sources used:
@@ -12,15 +13,20 @@ Primary sources used:
 
 ---
 
-## 1. The agent concept is unconstrained — claims-checker survives
+## 1. The agent concept is unconstrained
 
-**VERIFIED.** The event brief mandates no problem domain. Constraints are technical
-and procedural only. Its own examples are operational B2B: *compare supplier
-quotes, draft a sourced support reply, research an account, reconcile delivery
-records* — noticeably more back-office than the marketing-compliance angle in
-§11 of the plan. Both are viable; the brief does not prefer either.
+**VERIFIED.** The event brief mandates no problem domain, and no required
+capability — *"the agent can use any model, tool, or runtime the participant
+chooses."* Constraints are technical and procedural only.
 
-Closes the §14 gap: "the page may specify a required problem domain." It does not.
+Closes the gap flagged in the original plan's confidence log: "the page may specify
+a required problem domain." It does not.
+
+This is what makes [`PRODUCT.md`](PRODUCT.md) possible. A voice agent needs an
+external telephony dependency that no other entrant is likely to have, and nothing
+in the brief restricts that. Its own examples — *compare supplier quotes, draft a
+sourced support reply, research an account, reconcile delivery records* — are
+notably all workflows that routinely dead-end at a phone call.
 
 ---
 
@@ -162,3 +168,5 @@ Checkpoint 1 is `GRANTED`, verified independently with
   is a step the plan does not describe and we do not yet understand. It sits
   directly on the Checkpoint 4 path. Highest-value unknown remaining.
 - The demo repo `masumi-network/demo-agent-token2049` has not been read yet.
+- **Telephony provider is not yet chosen** (Phase 2T). New dependency introduced by
+  the pivot; nothing in the Masumi or Sokosumi tooling constrains the choice.
