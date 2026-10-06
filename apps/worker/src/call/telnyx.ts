@@ -27,10 +27,25 @@ import type { CallBrief, CallResult, CallStatus, Transcript } from '../lib/types
 const API = 'https://api.telnyx.com/v2';
 const POLL_INTERVAL_MS = 5_000;
 
+/**
+ * Every assistant Dispatch creates carries this prefix, and Dispatch refuses to
+ * delete anything without it.
+ *
+ * This account is shared with a production healthcare system whose assistants
+ * handle insurance verification and appointment scheduling. Deleting by an ID we
+ * believe we created is already correct; this is the second lock, because the
+ * cost of being wrong once is someone's live patient-facing agent disappearing.
+ */
+const ASSISTANT_PREFIX = 'dispatch-';
+
 export interface TelnyxConfig {
 	apiKey: string;
-	/** TeXML application that places the call. */
-	texmlAppId: string;
+	/**
+	 * Optional override. Normally unset: Telnyx auto-provisions a TeXML
+	 * application per assistant (VERIFIED), so Dispatch resolves its own rather
+	 * than borrowing a shared one.
+	 */
+	texmlAppId?: string;
 	/** Verified Telnyx number to dial from, E.164. */
 	fromNumber: string;
 	/** Model the assistant speaks with. */
@@ -115,7 +130,7 @@ HARD RULES
 		const assistant = await this.api<{ id?: string; data?: { id: string } }>('/ai/assistants', {
 			method: 'POST',
 			body: JSON.stringify({
-				name: `dispatch-${Date.now()}`,
+				name: `${ASSISTANT_PREFIX}${Date.now()}`,
 				model: this.cfg.model ?? 'openai/gpt-4o',
 				instructions: this.instructionsFor(brief),
 				greeting: 'Hello, I am an AI assistant calling on behalf of a customer.',
@@ -126,7 +141,8 @@ HARD RULES
 		if (!assistantId) throw new ProviderError('telnyx did not return an assistant id', false);
 
 		try {
-			await this.api(`/texml/ai_calls/${this.cfg.texmlAppId}`, {
+			const texmlAppId = this.cfg.texmlAppId ?? (await this.resolveTexmlApp(assistantId));
+			await this.api(`/texml/ai_calls/${texmlAppId}`, {
 				method: 'POST',
 				body: JSON.stringify({
 					From: this.cfg.fromNumber,
@@ -139,8 +155,52 @@ HARD RULES
 			return await this.awaitTranscript(assistantId, brief.maxDurationSeconds);
 		} finally {
 			// Ephemeral assistants would otherwise accumulate on the account.
-			await this.api(`/ai/assistants/${assistantId}`, { method: 'DELETE' }).catch(() => {});
+			await this.deleteOwnAssistant(assistantId).catch(() => {});
 		}
+	}
+
+	/**
+	 * Find the TeXML application Telnyx provisioned for this assistant.
+	 *
+	 * VERIFIED against the live API: creating an assistant also creates a TeXML
+	 * application named `ai-assistant-{assistant_id}`. Resolving it per call
+	 * means Dispatch never routes through an application it does not own — which
+	 * matters here, because this Telnyx account is shared with a production
+	 * healthcare system whose applications carry their own webhooks.
+	 */
+	private async resolveTexmlApp(assistantId: string): Promise<string> {
+		const expected = `ai-assistant-${assistantId}`;
+		// Provisioning is not instantaneous; it appeared within ~3s in testing.
+		for (let attempt = 0; attempt < 5; attempt++) {
+			const list = await this.api<{ data?: Array<{ id: string; friendly_name?: string }> }>(
+				'/texml_applications?page[size]=25',
+			);
+			const match = list.data?.find((a) => a.friendly_name === expected);
+			if (match) return match.id;
+			await new Promise((r) => setTimeout(r, 2_000));
+		}
+		throw new ProviderError(`no TeXML application appeared for assistant ${assistantId}`, true);
+	}
+
+	/**
+	 * Delete an assistant, but only after confirming Dispatch created it.
+	 *
+	 * Re-reads the record and checks the name prefix rather than trusting the id
+	 * we are holding. On a shared account, an unverified delete is one bad
+	 * variable away from removing production infrastructure.
+	 */
+	private async deleteOwnAssistant(assistantId: string): Promise<void> {
+		const record = await this.api<{ id?: string; name?: string; data?: { id: string; name: string } }>(
+			`/ai/assistants/${assistantId}`,
+		);
+		const name = record.data?.name ?? record.name ?? '';
+		if (!name.startsWith(ASSISTANT_PREFIX)) {
+			console.error(
+				`[dispatch] refusing to delete assistant ${assistantId} ("${name}") — not ours. Leaving it in place.`,
+			);
+			return;
+		}
+		await this.api(`/ai/assistants/${assistantId}`, { method: 'DELETE' });
 	}
 
 	/** Poll until the conversation stops growing, or we hit the brief's ceiling. */

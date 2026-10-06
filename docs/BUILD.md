@@ -120,6 +120,7 @@ key, so response shapes are read defensively):
 |---|---|
 | `POST /v2/ai/assistants` | Create a per-call assistant carrying the brief |
 | `POST /v2/texml/ai_calls/{texml_app_id}` | Place the outbound call |
+| `GET /v2/texml_applications` | Resolve our own app (**VERIFIED**: one is auto-provisioned per assistant, named `ai-assistant-{id}`) |
 | `GET /v2/ai/conversations?filter[assistant_id]=` | Correlate the conversation |
 | `GET /v2/ai/conversations/{id}/messages` | Read the transcript |
 | `DELETE /v2/ai/assistants/{id}` | Clean up |
@@ -128,8 +129,16 @@ One ephemeral assistant per call. It costs a round trip, but each job has a
 different objective and authorization, and it guarantees one conversation maps to
 one call — no correlation guesswork when reading the transcript back.
 
-Needed from the operator: `TELNYX_API_KEY`, a **TeXML application ID**, and a
-**verified outbound number**.
+**Shared-account safety.** The Telnyx account is shared with a production
+healthcare system — 12 live assistants handle insurance verification and
+appointment scheduling. Dispatch names every assistant it creates `dispatch-*`,
+and before deleting it re-reads the record and refuses anything without that
+prefix rather than trusting the id it holds. It also resolves its own
+per-assistant TeXML application, so it never routes through one carrying someone
+else's webhooks.
+
+Needed from the operator: `TELNYX_API_KEY` and a **verified outbound number**.
+No TeXML application ID is required — Telnyx provisions one per assistant.
 
 Prove a round trip early, because everything downstream assumes a call can
 actually be placed:

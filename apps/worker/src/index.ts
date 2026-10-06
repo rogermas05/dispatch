@@ -35,7 +35,7 @@ function selectProvider(): CallProvider {
 	if (configured === 'telnyx') {
 		return new TelnyxCallProvider({
 			apiKey: required('TELNYX_API_KEY'),
-			texmlAppId: required('TELNYX_TEXML_APP_ID'),
+			texmlAppId: process.env.TELNYX_TEXML_APP_ID || undefined,
 			fromNumber: required('TELNYX_FROM_NUMBER'),
 			model: process.env.TELNYX_MODEL,
 			voice: process.env.TELNYX_VOICE,
