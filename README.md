@@ -15,7 +15,11 @@ after a task completed.
 
 ## Status
 
-Scaffold. No checkpoints passed yet. Local prereqs verified: Node v24.16.0,
+**Checkpoints 0 and 1 are VERIFIED.** Vendor, Coworker, and a `GRANTED` workspace
+grant all exist on Preprod; evidence in `.local/`. Next up is Phase 2 — an agent
+that completes an unpaid task end to end.
+
+Local prereqs verified: Node v24.16.0,
 PostgreSQL 17.11, Docker 29.8.1, Sokosumi CLI 1.0.4 (project-local).
 
 Primary sources have been reconciled against the plan — see
@@ -26,8 +30,8 @@ journal prevents double-processing a task.
 
 | Checkpoint | What it proves | State |
 |---|---|---|
-| 0 | Prereqs installed, Sokosumi auth works, `.env.local` exists | ☐ |
-| 1 | Vendor + Coworker created, `workspaceAccess.status: GRANTED` | ☐ |
+| 0 | Prereqs installed, Sokosumi auth works, `.env.local` exists | ✅ **VERIFIED** |
+| 1 | Vendor + Coworker created, `workspaceAccess.status: GRANTED` | ✅ **VERIFIED** |
 | 2 | A task reaches `COMPLETED` with a real result — unpaid | ☐ |
 | 3 | `RegistrationConfirmed` on-chain; `/availability` returns 200; wallet funded | ☐ |
 | 4 | **One paid task settles — confirmed collection tx, USDM received** | ☐ |
@@ -128,7 +132,23 @@ modes: [`docs/PLAN.md`](docs/PLAN.md). Verified corrections to it, with sources:
 [`docs/FINDINGS.md`](docs/FINDINGS.md) — read this second, it overrides the plan
 where they disagree.
 
+Second builder joining the project: [`docs/ONBOARDING.md`](docs/ONBOARDING.md).
+
 Deployment steps are added at Phase 5.
+
+### Live identifiers
+
+| Thing | Value |
+|---|---|
+| Organization | `Substantiate` — `01a10fd0-67f5-709f-9874-4627dc671212` |
+| Vendor | `Substantiate` — `01a10fd1-9907-77ba-92d0-ac202cedd643` |
+| Coworker | `Substantiate Claims Checker` — `01a10fd1-dd7b-7415-91e1-0bf91fb6d76c` |
+| Workspace | Personal — `01a10fc8-74b3-76c5-8281-53c228e71459`, access `GRANTED` |
+
+Tasks run in the Personal Workspace: the free seat's 3,250 credits sit there,
+while organization credits are a separate pool. The organization exists because
+Vendor creation requires one. Connection to the TOKEN2049 organization
+(`01a109d1-32a9-71a3-a0e3-658b2a7987cd`) is a Phase 6 step.
 
 ---
 
