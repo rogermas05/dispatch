@@ -1,0 +1,1275 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-10-07T13:00:00.000Z",
+  "mode": "mock",
+  "network": "Preprod",
+  "asset": {
+    "symbol": "tUSDM",
+    "unit": "16a55b2a349361ff88c03788f93e1e966e5d689605d044fef722ddde0014df10745553444d",
+    "decimals": 6
+  },
+  "platform_fee_bps": 500,
+  "agents": [
+    {
+      "id": "sokosumi_user",
+      "name": "Sokosumi customer",
+      "role": "customer",
+      "provider": null,
+      "masumi_agent_identifier": null
+    },
+    {
+      "id": "broker",
+      "name": "Experience Broker",
+      "role": "broker",
+      "provider": null,
+      "masumi_agent_identifier": "ceaf062e351030f6635a3fa840500c3714dff54306026a5317b5454bb1e95ca4"
+    },
+    {
+      "id": "storefront",
+      "name": "Experience Storefront",
+      "role": "storefront",
+      "provider": null,
+      "masumi_agent_identifier": "4249d0864a2d10430697b552e7280590dc5eced523f41cb41fe4fd3a9e7cf134"
+    },
+    {
+      "id": "agent_a",
+      "name": "Agent A",
+      "role": "producer",
+      "provider": "anthropic",
+      "masumi_agent_identifier": null
+    },
+    {
+      "id": "agent_b",
+      "name": "Agent B",
+      "role": "producer",
+      "provider": "anthropic",
+      "masumi_agent_identifier": null
+    },
+    {
+      "id": "agent_c",
+      "name": "Agent C",
+      "role": "producer",
+      "provider": "anthropic",
+      "masumi_agent_identifier": null
+    },
+    {
+      "id": "seed_corpus",
+      "name": "Seed corpus",
+      "role": "producer",
+      "provider": null,
+      "masumi_agent_identifier": null
+    }
+  ],
+  "tasks": [
+    {
+      "id": "task_1",
+      "sokosumi_task_id": "mock-01cc3701a8a3",
+      "title": "Export every order exactly once",
+      "brief": "Export every order exactly once from fixture A and show that the export is complete.",
+      "producer_id": "agent_a",
+      "search": {
+        "query": "Export every order exactly once from fixture A and show that the export is complete.",
+        "hits": [
+          {
+            "experience_id": "exp_seed_offset_v0",
+            "score": 0.547,
+            "components": {
+              "relevance": 0.83,
+              "context_match": 0,
+              "observed_success": 0.3333333333333333,
+              "evidence_quality": 0.5,
+              "freshness": 0.98,
+              "creator_reliability": 0.5
+            },
+            "compatible": false
+          },
+          {
+            "experience_id": "exp_seed_graphql",
+            "score": 0.449,
+            "components": {
+              "relevance": 0.61,
+              "context_match": 0,
+              "observed_success": 0.3333333333333333,
+              "evidence_quality": 0.5,
+              "freshness": 0.98,
+              "creator_reliability": 0.5
+            },
+            "compatible": false
+          },
+          {
+            "experience_id": "exp_seed_shopify_bulk",
+            "score": 0.43,
+            "components": {
+              "relevance": 0.57,
+              "context_match": 0,
+              "observed_success": 0.3333333333333333,
+              "evidence_quality": 0.5,
+              "freshness": 0.98,
+              "creator_reliability": 0.5
+            },
+            "compatible": false
+          },
+          {
+            "experience_id": "exp_seed_stripe_429",
+            "score": 0.345,
+            "components": {
+              "relevance": 0.38,
+              "context_match": 0,
+              "observed_success": 0.3333333333333333,
+              "evidence_quality": 0.5,
+              "freshness": 0.98,
+              "creator_reliability": 0.5
+            },
+            "compatible": false
+          },
+          {
+            "experience_id": "exp_seed_etag",
+            "score": 0.314,
+            "components": {
+              "relevance": 0.31,
+              "context_match": 0,
+              "observed_success": 0.3333333333333333,
+              "evidence_quality": 0.5,
+              "freshness": 0.98,
+              "creator_reliability": 0.5
+            },
+            "compatible": false
+          }
+        ],
+        "decision": "cold_start",
+        "chosen_experience_id": null
+      },
+      "metrics": {
+        "tool_calls": 14,
+        "failed_tool_calls": 4,
+        "tokens": 48200,
+        "duration_ms": 96000,
+        "compute_cost_usd": 0.41
+      },
+      "baseline": null,
+      "result_summary": "1,240 orders exported, 12 duplicate records removed, count verified against /orders/count.",
+      "published_experience_id": "exp_a"
+    },
+    {
+      "id": "task_2",
+      "sokosumi_task_id": "mock-4e1eef774818",
+      "title": "Reconcile orders with duplicates and rate limits",
+      "brief": "Reconcile all orders in fixture B, handling duplicate IDs and temporary rate limiting.",
+      "producer_id": "agent_b",
+      "search": {
+        "query": "Reconcile all orders in fixture B, handling duplicate IDs and temporary rate limiting.",
+        "hits": [
+          {
+            "experience_id": "exp_a",
+            "score": 0.874,
+            "components": {
+              "relevance": 0.91,
+              "context_match": 1,
+              "observed_success": 0.6,
+              "evidence_quality": 1,
+              "freshness": 0.98,
+              "creator_reliability": 0.5
+            },
+            "compatible": true
+          },
+          {
+            "experience_id": "exp_seed_offset_v0",
+            "score": 0.547,
+            "components": {
+              "relevance": 0.83,
+              "context_match": 0,
+              "observed_success": 0.3333333333333333,
+              "evidence_quality": 0.5,
+              "freshness": 0.98,
+              "creator_reliability": 0.5
+            },
+            "compatible": false
+          },
+          {
+            "experience_id": "exp_seed_graphql",
+            "score": 0.449,
+            "components": {
+              "relevance": 0.61,
+              "context_match": 0,
+              "observed_success": 0.3333333333333333,
+              "evidence_quality": 0.5,
+              "freshness": 0.98,
+              "creator_reliability": 0.5
+            },
+            "compatible": false
+          },
+          {
+            "experience_id": "exp_seed_shopify_bulk",
+            "score": 0.43,
+            "components": {
+              "relevance": 0.57,
+              "context_match": 0,
+              "observed_success": 0.3333333333333333,
+              "evidence_quality": 0.5,
+              "freshness": 0.98,
+              "creator_reliability": 0.5
+            },
+            "compatible": false
+          },
+          {
+            "experience_id": "exp_seed_stripe_429",
+            "score": 0.345,
+            "components": {
+              "relevance": 0.38,
+              "context_match": 0,
+              "observed_success": 0.3333333333333333,
+              "evidence_quality": 0.5,
+              "freshness": 0.98,
+              "creator_reliability": 0.5
+            },
+            "compatible": false
+          }
+        ],
+        "decision": "purchase",
+        "chosen_experience_id": "exp_a"
+      },
+      "metrics": {
+        "tool_calls": 6,
+        "failed_tool_calls": 1,
+        "tokens": 17900,
+        "duration_ms": 41000,
+        "compute_cost_usd": 0.15
+      },
+      "baseline": {
+        "tool_calls": 17,
+        "failed_tool_calls": 5,
+        "tokens": 61300,
+        "duration_ms": 128000,
+        "compute_cost_usd": 0.52
+      },
+      "result_summary": "2,015 orders reconciled, 31 duplicates merged, one 429 absorbed by backoff.",
+      "published_experience_id": "exp_b"
+    },
+    {
+      "id": "task_3",
+      "sokosumi_task_id": "mock-a57eb548e4c1",
+      "title": "Incremental order sync",
+      "brief": "Sync new orders from fixture C into the warehouse table since the last checkpoint.",
+      "producer_id": "agent_c",
+      "search": {
+        "query": "Sync new orders from fixture C into the warehouse table since the last checkpoint.",
+        "hits": [
+          {
+            "experience_id": "exp_b",
+            "score": 0.874,
+            "components": {
+              "relevance": 0.91,
+              "context_match": 1,
+              "observed_success": 0.6,
+              "evidence_quality": 1,
+              "freshness": 0.98,
+              "creator_reliability": 0.5
+            },
+            "compatible": true
+          },
+          {
+            "experience_id": "exp_a",
+            "score": 0.797,
+            "components": {
+              "relevance": 0.74,
+              "context_match": 1,
+              "observed_success": 0.6,
+              "evidence_quality": 1,
+              "freshness": 0.98,
+              "creator_reliability": 0.5
+            },
+            "compatible": true
+          },
+          {
+            "experience_id": "exp_seed_offset_v0",
+            "score": 0.547,
+            "components": {
+              "relevance": 0.83,
+              "context_match": 0,
+              "observed_success": 0.3333333333333333,
+              "evidence_quality": 0.5,
+              "freshness": 0.98,
+              "creator_reliability": 0.5
+            },
+            "compatible": false
+          },
+          {
+            "experience_id": "exp_seed_graphql",
+            "score": 0.449,
+            "components": {
+              "relevance": 0.61,
+              "context_match": 0,
+              "observed_success": 0.3333333333333333,
+              "evidence_quality": 0.5,
+              "freshness": 0.98,
+              "creator_reliability": 0.5
+            },
+            "compatible": false
+          },
+          {
+            "experience_id": "exp_seed_shopify_bulk",
+            "score": 0.43,
+            "components": {
+              "relevance": 0.57,
+              "context_match": 0,
+              "observed_success": 0.3333333333333333,
+              "evidence_quality": 0.5,
+              "freshness": 0.98,
+              "creator_reliability": 0.5
+            },
+            "compatible": false
+          }
+        ],
+        "decision": "purchase",
+        "chosen_experience_id": "exp_b"
+      },
+      "metrics": {
+        "tool_calls": 5,
+        "failed_tool_calls": 0,
+        "tokens": 14100,
+        "duration_ms": 33000,
+        "compute_cost_usd": 0.12
+      },
+      "baseline": null,
+      "result_summary": "312 new orders upserted; checkpoint advanced; no gaps or duplicates.",
+      "published_experience_id": "exp_c"
+    }
+  ],
+  "experiences": [
+    {
+      "id": "exp_a",
+      "digest": "1d9a47686253358f444e5c6a4d66767f3cd34a4a0f0370fb444e730ad97bc772",
+      "creator_id": "agent_a",
+      "task_id": "task_1",
+      "seeded": false,
+      "problem": "Export every record from a cursor-paginated API",
+      "teaser": "Offset paging repeats page one on this API; follow next_cursor until null and dedupe by id.",
+      "context": {
+        "api": "demo-orders",
+        "version": "1"
+      },
+      "evidence_level": "evaluator",
+      "parents": [],
+      "split": [
+        {
+          "recipient_id": "agent_a",
+          "bps": 10000
+        }
+      ],
+      "price": "1000000"
+    },
+    {
+      "id": "exp_b",
+      "digest": "01d9970d9290f67b9865859ad72658688d98211992f0464b2b335fe75c97232f",
+      "creator_id": "agent_b",
+      "task_id": "task_2",
+      "seeded": false,
+      "problem": "Reconcile a cursor-paginated export with duplicate ids and 429 rate limits",
+      "teaser": "Builds on exp_a: cursor paging plus Retry-After backoff, so rate limits never drop a page.",
+      "context": {
+        "api": "demo-orders",
+        "version": "1"
+      },
+      "evidence_level": "evaluator",
+      "parents": [
+        {
+          "experience_id": "exp_a",
+          "digest": "1d9a47686253358f444e5c6a4d66767f3cd34a4a0f0370fb444e730ad97bc772"
+        }
+      ],
+      "split": [
+        {
+          "recipient_id": "agent_b",
+          "bps": 8000
+        },
+        {
+          "recipient_id": "agent_a",
+          "bps": 2000
+        }
+      ],
+      "price": "1000000"
+    },
+    {
+      "id": "exp_c",
+      "digest": "3cf2c48f7c9806056a69b26add49a8e0932f75dce9804345ef1ed52729e01cf8",
+      "creator_id": "agent_c",
+      "task_id": "task_3",
+      "seeded": false,
+      "problem": "Incrementally sync a cursor-paginated API from a saved checkpoint",
+      "teaser": "Builds on exp_b: persist the last cursor as a checkpoint and resume from it with backoff.",
+      "context": {
+        "api": "demo-orders",
+        "version": "1"
+      },
+      "evidence_level": "evaluator",
+      "parents": [
+        {
+          "experience_id": "exp_b",
+          "digest": "01d9970d9290f67b9865859ad72658688d98211992f0464b2b335fe75c97232f"
+        }
+      ],
+      "split": [
+        {
+          "recipient_id": "agent_c",
+          "bps": 8000
+        },
+        {
+          "recipient_id": "agent_b",
+          "bps": 1600
+        },
+        {
+          "recipient_id": "agent_a",
+          "bps": 400
+        }
+      ],
+      "price": "1000000"
+    },
+    {
+      "id": "exp_seed_offset_v0",
+      "digest": "2f77fe772da6b1666b59ecaeec8db91e31511327602991245d437d7c59a7529c",
+      "creator_id": "seed_corpus",
+      "task_id": null,
+      "seeded": true,
+      "problem": "Export every record from an offset-paginated API",
+      "teaser": "Seed corpus entry: export every record from an offset-paginated api.",
+      "context": {
+        "api": "demo-orders",
+        "version": "0"
+      },
+      "evidence_level": "artifact",
+      "parents": [],
+      "split": [
+        {
+          "recipient_id": "seed_corpus",
+          "bps": 10000
+        }
+      ],
+      "price": "1000000"
+    },
+    {
+      "id": "exp_seed_graphql",
+      "digest": "b6ab387368952654a32e4469c97d8abb7a7d655cede862a9f1a150ce6cc13b01",
+      "creator_id": "seed_corpus",
+      "task_id": null,
+      "seeded": true,
+      "problem": "Paginate GraphQL connections with endCursor",
+      "teaser": "Seed corpus entry: paginate graphql connections with endcursor.",
+      "context": {
+        "api": "graphql"
+      },
+      "evidence_level": "artifact",
+      "parents": [],
+      "split": [
+        {
+          "recipient_id": "seed_corpus",
+          "bps": 10000
+        }
+      ],
+      "price": "1000000"
+    },
+    {
+      "id": "exp_seed_stripe_429",
+      "digest": "d71e677d14c9031ffbad3a6c1ba992f15b3e3ca2b9b1ca7495178e5de5e2567d",
+      "creator_id": "seed_corpus",
+      "task_id": null,
+      "seeded": true,
+      "problem": "Retry Stripe API 429s with exponential backoff",
+      "teaser": "Seed corpus entry: retry stripe api 429s with exponential backoff.",
+      "context": {
+        "api": "stripe"
+      },
+      "evidence_level": "artifact",
+      "parents": [],
+      "split": [
+        {
+          "recipient_id": "seed_corpus",
+          "bps": 10000
+        }
+      ],
+      "price": "1000000"
+    },
+    {
+      "id": "exp_seed_shopify_bulk",
+      "digest": "fdc9d3cc4881b4aa1ff4af4a821def7363dda6c9f83e4fecc971843e4e619133",
+      "creator_id": "seed_corpus",
+      "task_id": null,
+      "seeded": true,
+      "problem": "Bulk-export Shopify orders with GraphQL bulk operations",
+      "teaser": "Seed corpus entry: bulk-export shopify orders with graphql bulk operations.",
+      "context": {
+        "api": "shopify"
+      },
+      "evidence_level": "artifact",
+      "parents": [],
+      "split": [
+        {
+          "recipient_id": "seed_corpus",
+          "bps": 10000
+        }
+      ],
+      "price": "1000000"
+    },
+    {
+      "id": "exp_seed_csv_dedupe",
+      "digest": "a1f4f4ba159eeb0de375f2309e8f773c61e30ffa047026d1b87fadaf6b4a77ce",
+      "creator_id": "seed_corpus",
+      "task_id": null,
+      "seeded": true,
+      "problem": "Deduplicate CSV rows by composite key",
+      "teaser": "Seed corpus entry: deduplicate csv rows by composite key.",
+      "context": {
+        "format": "csv"
+      },
+      "evidence_level": "artifact",
+      "parents": [],
+      "split": [
+        {
+          "recipient_id": "seed_corpus",
+          "bps": 10000
+        }
+      ],
+      "price": "1000000"
+    },
+    {
+      "id": "exp_seed_stream_json",
+      "digest": "1e9a65f2372e9b8317dd210bdfaf960e98c7475e935fb881d6cdd57d22b81864",
+      "creator_id": "seed_corpus",
+      "task_id": null,
+      "seeded": true,
+      "problem": "Stream large JSON responses without buffering",
+      "teaser": "Seed corpus entry: stream large json responses without buffering.",
+      "context": {
+        "runtime": "python"
+      },
+      "evidence_level": "artifact",
+      "parents": [],
+      "split": [
+        {
+          "recipient_id": "seed_corpus",
+          "bps": 10000
+        }
+      ],
+      "price": "1000000"
+    },
+    {
+      "id": "exp_seed_etag",
+      "digest": "4974cc3fe306476b21936355ccfd4626d7bfb2f32a7dfed6ab80ff2dba4db69d",
+      "creator_id": "seed_corpus",
+      "task_id": null,
+      "seeded": true,
+      "problem": "Poll REST endpoints efficiently with ETag caching",
+      "teaser": "Seed corpus entry: poll rest endpoints efficiently with etag caching.",
+      "context": {
+        "api": "generic-rest"
+      },
+      "evidence_level": "artifact",
+      "parents": [],
+      "split": [
+        {
+          "recipient_id": "seed_corpus",
+          "bps": 10000
+        }
+      ],
+      "price": "1000000"
+    },
+    {
+      "id": "exp_seed_s3_resume",
+      "digest": "6f5372e62d9a317df31de73db57a22a24754150c98b959acfb7ba7530d827b0a",
+      "creator_id": "seed_corpus",
+      "task_id": null,
+      "seeded": true,
+      "problem": "Resume interrupted S3 multipart uploads",
+      "teaser": "Seed corpus entry: resume interrupted s3 multipart uploads.",
+      "context": {
+        "api": "s3"
+      },
+      "evidence_level": "artifact",
+      "parents": [],
+      "split": [
+        {
+          "recipient_id": "seed_corpus",
+          "bps": 10000
+        }
+      ],
+      "price": "1000000"
+    }
+  ],
+  "orders": [
+    {
+      "id": "order_1",
+      "buyer_id": "broker",
+      "task_id": "task_2",
+      "experience_id": "exp_a",
+      "amount": "1000000",
+      "collected_amount": "1000000",
+      "platform_fee": "50000"
+    },
+    {
+      "id": "order_2",
+      "buyer_id": "broker",
+      "task_id": "task_3",
+      "experience_id": "exp_b",
+      "amount": "1000000",
+      "collected_amount": "1000000",
+      "platform_fee": "50000"
+    }
+  ],
+  "allocations": [
+    {
+      "id": "alloc_order_1_agent_a",
+      "order_id": "order_1",
+      "recipient_id": "agent_a",
+      "amount": "950000",
+      "payout_receipt_id": "rcpt_payout_order_1"
+    },
+    {
+      "id": "alloc_order_2_agent_b",
+      "order_id": "order_2",
+      "recipient_id": "agent_b",
+      "amount": "760000",
+      "payout_receipt_id": "rcpt_payout_order_2"
+    },
+    {
+      "id": "alloc_order_2_agent_a",
+      "order_id": "order_2",
+      "recipient_id": "agent_a",
+      "amount": "190000",
+      "payout_receipt_id": "rcpt_payout_order_2"
+    }
+  ],
+  "receipts": [
+    {
+      "id": "rcpt_reg_broker",
+      "kind": "registration",
+      "tx_hash": "c25eb0daaa6f1af97770235dc3d5f9a5c14295e774ce50eecd439f5d039d63f9",
+      "verification": "mock",
+      "explorer_url": null
+    },
+    {
+      "id": "rcpt_reg_storefront",
+      "kind": "registration",
+      "tx_hash": "1c67184b88b52cb6105a1413233e10661baa3b595eb42d602c84ef02c60fc513",
+      "verification": "mock",
+      "explorer_url": null
+    },
+    {
+      "id": "rcpt_lock_order_1",
+      "kind": "funds_locked",
+      "tx_hash": "f54bf719c9214049274fa0443313200075146e471bccec4fda8620cd48805a1b",
+      "verification": "mock",
+      "explorer_url": null
+    },
+    {
+      "id": "rcpt_submit_order_1",
+      "kind": "result_submitted",
+      "tx_hash": "e91dfc55f9b4e82b25e6365ef1f0315ac30d340158f700f414676b7967b8c55c",
+      "verification": "mock",
+      "explorer_url": null
+    },
+    {
+      "id": "rcpt_lock_order_2",
+      "kind": "funds_locked",
+      "tx_hash": "e09d30542b52a4b0895d6322d32a9e95d8e3b824ff3a9133d0877b1ead9d157b",
+      "verification": "mock",
+      "explorer_url": null
+    },
+    {
+      "id": "rcpt_submit_order_2",
+      "kind": "result_submitted",
+      "tx_hash": "768165b7dd0be4025f60688ea4d7872435261ad7507960e93c54be68ed08b2e1",
+      "verification": "mock",
+      "explorer_url": null
+    },
+    {
+      "id": "rcpt_collect_order_1",
+      "kind": "collection",
+      "tx_hash": "19da67a36802de18a7a649acc6364de25c9318329086e6aec05c925e518291ae",
+      "verification": "mock",
+      "explorer_url": null
+    },
+    {
+      "id": "rcpt_payout_order_1",
+      "kind": "payout",
+      "tx_hash": "3d725a421c20d4a5995054324fec948fcc7d80637f3ab4343088932d0daf7f70",
+      "verification": "mock",
+      "explorer_url": null
+    },
+    {
+      "id": "rcpt_collect_order_2",
+      "kind": "collection",
+      "tx_hash": "3ad76cc5b37ce17e9ab34888988af2c3ec9cb810b35c6fb540254e7aa2eb7033",
+      "verification": "mock",
+      "explorer_url": null
+    },
+    {
+      "id": "rcpt_payout_order_2",
+      "kind": "payout",
+      "tx_hash": "e708ead7a47ff3c4e9596fa61dd0ec82790b55d65b447942514598388343ca66",
+      "verification": "mock",
+      "explorer_url": null
+    }
+  ],
+  "events": [
+    {
+      "id": "evt_0",
+      "seq": 0,
+      "at": "2026-10-07T01:00:00.000Z",
+      "kind": "agent_registered",
+      "label": "Experience Broker registered on Masumi (Cardano Preprod)",
+      "ok": true,
+      "agent_id": "broker",
+      "receipt_id": "rcpt_reg_broker"
+    },
+    {
+      "id": "evt_1",
+      "seq": 1,
+      "at": "2026-10-07T01:00:00.000Z",
+      "kind": "agent_registered",
+      "label": "Experience Storefront registered on Masumi (Cardano Preprod)",
+      "ok": true,
+      "agent_id": "storefront",
+      "receipt_id": "rcpt_reg_storefront"
+    },
+    {
+      "id": "evt_2",
+      "seq": 2,
+      "at": "2026-10-07T01:10:00.000Z",
+      "kind": "task_received",
+      "label": "Sokosumi task: Export every order exactly once",
+      "ok": true,
+      "agent_id": "sokosumi_user",
+      "task_id": "task_1"
+    },
+    {
+      "id": "evt_3",
+      "seq": 3,
+      "at": "2026-10-07T01:10:04.000Z",
+      "kind": "search_completed",
+      "label": "Searched 8 experiences: no compatible match, cold start",
+      "ok": true,
+      "agent_id": "broker",
+      "task_id": "task_1"
+    },
+    {
+      "id": "evt_4",
+      "seq": 4,
+      "at": "2026-10-07T01:10:10.000Z",
+      "kind": "tool_call",
+      "label": "GET /orders?limit=100",
+      "ok": true,
+      "agent_id": "agent_a",
+      "task_id": "task_1"
+    },
+    {
+      "id": "evt_5",
+      "seq": 5,
+      "at": "2026-10-07T01:10:16.000Z",
+      "kind": "tool_call",
+      "label": "GET /orders?offset=100: repeated first page",
+      "ok": false,
+      "agent_id": "agent_a",
+      "task_id": "task_1"
+    },
+    {
+      "id": "evt_6",
+      "seq": 6,
+      "at": "2026-10-07T01:10:22.000Z",
+      "kind": "tool_call",
+      "label": "GET /orders?page=2: repeated first page",
+      "ok": false,
+      "agent_id": "agent_a",
+      "task_id": "task_1"
+    },
+    {
+      "id": "evt_7",
+      "seq": 7,
+      "at": "2026-10-07T01:10:28.000Z",
+      "kind": "tool_call",
+      "label": "GET /orders?offset=200: repeated first page",
+      "ok": false,
+      "agent_id": "agent_a",
+      "task_id": "task_1"
+    },
+    {
+      "id": "evt_8",
+      "seq": 8,
+      "at": "2026-10-07T01:10:34.000Z",
+      "kind": "tool_call",
+      "label": "Inspect response: found next_cursor",
+      "ok": true,
+      "agent_id": "agent_a",
+      "task_id": "task_1"
+    },
+    {
+      "id": "evt_9",
+      "seq": 9,
+      "at": "2026-10-07T01:10:40.000Z",
+      "kind": "tool_call",
+      "label": "GET /orders?cursor=… (page 2)",
+      "ok": true,
+      "agent_id": "agent_a",
+      "task_id": "task_1"
+    },
+    {
+      "id": "evt_10",
+      "seq": 10,
+      "at": "2026-10-07T01:10:46.000Z",
+      "kind": "tool_call",
+      "label": "GET /orders?cursor=… (page 3)",
+      "ok": true,
+      "agent_id": "agent_a",
+      "task_id": "task_1"
+    },
+    {
+      "id": "evt_11",
+      "seq": 11,
+      "at": "2026-10-07T01:10:52.000Z",
+      "kind": "tool_call",
+      "label": "GET /orders?cursor=… (page 4): 429 Too Many Requests",
+      "ok": false,
+      "agent_id": "agent_a",
+      "task_id": "task_1"
+    },
+    {
+      "id": "evt_12",
+      "seq": 12,
+      "at": "2026-10-07T01:10:58.000Z",
+      "kind": "tool_call",
+      "label": "Retry page 4 after rate limit",
+      "ok": true,
+      "agent_id": "agent_a",
+      "task_id": "task_1"
+    },
+    {
+      "id": "evt_13",
+      "seq": 13,
+      "at": "2026-10-07T01:11:04.000Z",
+      "kind": "tool_call",
+      "label": "GET /orders?cursor=… (page 5)",
+      "ok": true,
+      "agent_id": "agent_a",
+      "task_id": "task_1"
+    },
+    {
+      "id": "evt_14",
+      "seq": 14,
+      "at": "2026-10-07T01:11:10.000Z",
+      "kind": "tool_call",
+      "label": "GET /orders?cursor=… (page 6)",
+      "ok": true,
+      "agent_id": "agent_a",
+      "task_id": "task_1"
+    },
+    {
+      "id": "evt_15",
+      "seq": 15,
+      "at": "2026-10-07T01:11:16.000Z",
+      "kind": "tool_call",
+      "label": "GET /orders?cursor=… (last page, next_cursor=null)",
+      "ok": true,
+      "agent_id": "agent_a",
+      "task_id": "task_1"
+    },
+    {
+      "id": "evt_16",
+      "seq": 16,
+      "at": "2026-10-07T01:11:22.000Z",
+      "kind": "tool_call",
+      "label": "Deduplicate by order id (12 removed)",
+      "ok": true,
+      "agent_id": "agent_a",
+      "task_id": "task_1"
+    },
+    {
+      "id": "evt_17",
+      "seq": 17,
+      "at": "2026-10-07T01:11:28.000Z",
+      "kind": "tool_call",
+      "label": "Verify count against /orders/count",
+      "ok": true,
+      "agent_id": "agent_a",
+      "task_id": "task_1"
+    },
+    {
+      "id": "evt_18",
+      "seq": 18,
+      "at": "2026-10-07T01:11:33.000Z",
+      "kind": "result_evaluated",
+      "label": "Fixture evaluator passed: 1,240 / 1,240 orders, 0 duplicates",
+      "ok": true,
+      "task_id": "task_1"
+    },
+    {
+      "id": "evt_19",
+      "seq": 19,
+      "at": "2026-10-07T01:11:35.000Z",
+      "kind": "result_delivered",
+      "label": "Result returned to the Sokosumi task",
+      "ok": true,
+      "agent_id": "broker",
+      "task_id": "task_1"
+    },
+    {
+      "id": "evt_20",
+      "seq": 20,
+      "at": "2026-10-07T01:11:55.000Z",
+      "kind": "experience_published",
+      "label": "Published exp_a: signed and indexed",
+      "ok": true,
+      "agent_id": "agent_a",
+      "task_id": "task_1",
+      "experience_id": "exp_a"
+    },
+    {
+      "id": "evt_21",
+      "seq": 21,
+      "at": "2026-10-07T01:30:00.000Z",
+      "kind": "task_received",
+      "label": "Sokosumi task: Reconcile orders with duplicates and rate limits",
+      "ok": true,
+      "agent_id": "sokosumi_user",
+      "task_id": "task_2"
+    },
+    {
+      "id": "evt_22",
+      "seq": 22,
+      "at": "2026-10-07T01:30:04.000Z",
+      "kind": "search_completed",
+      "label": "Searched 9 experiences: exp_a matches (score 0.87)",
+      "ok": true,
+      "agent_id": "broker",
+      "task_id": "task_2"
+    },
+    {
+      "id": "evt_23",
+      "seq": 23,
+      "at": "2026-10-07T01:30:07.000Z",
+      "kind": "order_placed",
+      "label": "Broker buys exp_a for 1.00 tUSDM",
+      "ok": true,
+      "agent_id": "broker",
+      "task_id": "task_2",
+      "experience_id": "exp_a",
+      "order_id": "order_1"
+    },
+    {
+      "id": "evt_24",
+      "seq": 24,
+      "at": "2026-10-07T01:31:22.000Z",
+      "kind": "funds_locked",
+      "label": "Funds locked in Masumi escrow",
+      "ok": true,
+      "order_id": "order_1",
+      "receipt_id": "rcpt_lock_order_1"
+    },
+    {
+      "id": "evt_25",
+      "seq": 25,
+      "at": "2026-10-07T01:31:42.000Z",
+      "kind": "content_delivered",
+      "label": "Storefront delivers exp_a; output hash logged on-chain",
+      "ok": true,
+      "agent_id": "storefront",
+      "experience_id": "exp_a",
+      "order_id": "order_1",
+      "receipt_id": "rcpt_submit_order_1"
+    },
+    {
+      "id": "evt_26",
+      "seq": 26,
+      "at": "2026-10-07T01:31:48.000Z",
+      "kind": "tool_call",
+      "label": "GET /orders?limit=200 (cursor paging from exp_a)",
+      "ok": true,
+      "agent_id": "agent_b",
+      "task_id": "task_2"
+    },
+    {
+      "id": "evt_27",
+      "seq": 27,
+      "at": "2026-10-07T01:31:54.000Z",
+      "kind": "tool_call",
+      "label": "GET /orders?cursor=… (page 2)",
+      "ok": true,
+      "agent_id": "agent_b",
+      "task_id": "task_2"
+    },
+    {
+      "id": "evt_28",
+      "seq": 28,
+      "at": "2026-10-07T01:32:00.000Z",
+      "kind": "tool_call",
+      "label": "GET /orders?cursor=… (page 3): 429 Too Many Requests",
+      "ok": false,
+      "agent_id": "agent_b",
+      "task_id": "task_2"
+    },
+    {
+      "id": "evt_29",
+      "seq": 29,
+      "at": "2026-10-07T01:32:06.000Z",
+      "kind": "tool_call",
+      "label": "Back off per Retry-After, retry page 3",
+      "ok": true,
+      "agent_id": "agent_b",
+      "task_id": "task_2"
+    },
+    {
+      "id": "evt_30",
+      "seq": 30,
+      "at": "2026-10-07T01:32:12.000Z",
+      "kind": "tool_call",
+      "label": "GET /orders?cursor=… (last page)",
+      "ok": true,
+      "agent_id": "agent_b",
+      "task_id": "task_2"
+    },
+    {
+      "id": "evt_31",
+      "seq": 31,
+      "at": "2026-10-07T01:32:18.000Z",
+      "kind": "tool_call",
+      "label": "Merge 31 duplicates, verify totals",
+      "ok": true,
+      "agent_id": "agent_b",
+      "task_id": "task_2"
+    },
+    {
+      "id": "evt_32",
+      "seq": 32,
+      "at": "2026-10-07T01:32:23.000Z",
+      "kind": "result_evaluated",
+      "label": "Fixture evaluator passed: 2,015 / 2,015 orders reconciled",
+      "ok": true,
+      "task_id": "task_2"
+    },
+    {
+      "id": "evt_33",
+      "seq": 33,
+      "at": "2026-10-07T01:32:25.000Z",
+      "kind": "result_delivered",
+      "label": "Result returned to the Sokosumi task",
+      "ok": true,
+      "agent_id": "broker",
+      "task_id": "task_2"
+    },
+    {
+      "id": "evt_34",
+      "seq": 34,
+      "at": "2026-10-07T01:32:45.000Z",
+      "kind": "experience_published",
+      "label": "Published exp_b: signed and indexed",
+      "ok": true,
+      "agent_id": "agent_b",
+      "task_id": "task_2",
+      "experience_id": "exp_b"
+    },
+    {
+      "id": "evt_35",
+      "seq": 35,
+      "at": "2026-10-07T01:50:00.000Z",
+      "kind": "task_received",
+      "label": "Sokosumi task: Incremental order sync",
+      "ok": true,
+      "agent_id": "sokosumi_user",
+      "task_id": "task_3"
+    },
+    {
+      "id": "evt_36",
+      "seq": 36,
+      "at": "2026-10-07T01:50:04.000Z",
+      "kind": "search_completed",
+      "label": "Searched 10 experiences: exp_b matches (score 0.87)",
+      "ok": true,
+      "agent_id": "broker",
+      "task_id": "task_3"
+    },
+    {
+      "id": "evt_37",
+      "seq": 37,
+      "at": "2026-10-07T01:50:07.000Z",
+      "kind": "order_placed",
+      "label": "Broker buys exp_b for 1.00 tUSDM",
+      "ok": true,
+      "agent_id": "broker",
+      "task_id": "task_3",
+      "experience_id": "exp_b",
+      "order_id": "order_2"
+    },
+    {
+      "id": "evt_38",
+      "seq": 38,
+      "at": "2026-10-07T01:51:22.000Z",
+      "kind": "funds_locked",
+      "label": "Funds locked in Masumi escrow",
+      "ok": true,
+      "order_id": "order_2",
+      "receipt_id": "rcpt_lock_order_2"
+    },
+    {
+      "id": "evt_39",
+      "seq": 39,
+      "at": "2026-10-07T01:51:42.000Z",
+      "kind": "content_delivered",
+      "label": "Storefront delivers exp_b; output hash logged on-chain",
+      "ok": true,
+      "agent_id": "storefront",
+      "experience_id": "exp_b",
+      "order_id": "order_2",
+      "receipt_id": "rcpt_submit_order_2"
+    },
+    {
+      "id": "evt_40",
+      "seq": 40,
+      "at": "2026-10-07T01:51:48.000Z",
+      "kind": "tool_call",
+      "label": "GET /orders?since=checkpoint",
+      "ok": true,
+      "agent_id": "agent_c",
+      "task_id": "task_3"
+    },
+    {
+      "id": "evt_41",
+      "seq": 41,
+      "at": "2026-10-07T01:51:54.000Z",
+      "kind": "tool_call",
+      "label": "GET /orders?cursor=… (page 2)",
+      "ok": true,
+      "agent_id": "agent_c",
+      "task_id": "task_3"
+    },
+    {
+      "id": "evt_42",
+      "seq": 42,
+      "at": "2026-10-07T01:52:00.000Z",
+      "kind": "tool_call",
+      "label": "GET /orders?cursor=… (last page)",
+      "ok": true,
+      "agent_id": "agent_c",
+      "task_id": "task_3"
+    },
+    {
+      "id": "evt_43",
+      "seq": 43,
+      "at": "2026-10-07T01:52:06.000Z",
+      "kind": "tool_call",
+      "label": "Upsert 312 orders into warehouse",
+      "ok": true,
+      "agent_id": "agent_c",
+      "task_id": "task_3"
+    },
+    {
+      "id": "evt_44",
+      "seq": 44,
+      "at": "2026-10-07T01:52:12.000Z",
+      "kind": "tool_call",
+      "label": "Verify checkpoint advanced",
+      "ok": true,
+      "agent_id": "agent_c",
+      "task_id": "task_3"
+    },
+    {
+      "id": "evt_45",
+      "seq": 45,
+      "at": "2026-10-07T01:52:17.000Z",
+      "kind": "result_evaluated",
+      "label": "Fixture evaluator passed: 312 / 312 new orders, checkpoint advanced",
+      "ok": true,
+      "task_id": "task_3"
+    },
+    {
+      "id": "evt_46",
+      "seq": 46,
+      "at": "2026-10-07T01:52:19.000Z",
+      "kind": "result_delivered",
+      "label": "Result returned to the Sokosumi task",
+      "ok": true,
+      "agent_id": "broker",
+      "task_id": "task_3"
+    },
+    {
+      "id": "evt_47",
+      "seq": 47,
+      "at": "2026-10-07T01:52:39.000Z",
+      "kind": "experience_published",
+      "label": "Published exp_c: signed and indexed",
+      "ok": true,
+      "agent_id": "agent_c",
+      "task_id": "task_3",
+      "experience_id": "exp_c"
+    },
+    {
+      "id": "evt_48",
+      "seq": 48,
+      "at": "2026-10-07T06:30:07.000Z",
+      "kind": "payment_collected",
+      "label": "Collected 1.00 tUSDM for exp_a after the dispute window",
+      "ok": true,
+      "agent_id": "storefront",
+      "order_id": "order_1",
+      "receipt_id": "rcpt_collect_order_1"
+    },
+    {
+      "id": "evt_49",
+      "seq": 49,
+      "at": "2026-10-07T06:30:37.000Z",
+      "kind": "royalty_allocated",
+      "label": "Split: Agent A 0.95 · platform 0.05",
+      "ok": true,
+      "order_id": "order_1"
+    },
+    {
+      "id": "evt_50",
+      "seq": 50,
+      "at": "2026-10-07T06:30:38.000Z",
+      "kind": "payout_confirmed",
+      "label": "Paid 0.95 tUSDM to Agent A",
+      "ok": true,
+      "agent_id": "agent_a",
+      "allocation_id": "alloc_order_1_agent_a",
+      "receipt_id": "rcpt_payout_order_1"
+    },
+    {
+      "id": "evt_51",
+      "seq": 51,
+      "at": "2026-10-07T06:50:07.000Z",
+      "kind": "payment_collected",
+      "label": "Collected 1.00 tUSDM for exp_b after the dispute window",
+      "ok": true,
+      "agent_id": "storefront",
+      "order_id": "order_2",
+      "receipt_id": "rcpt_collect_order_2"
+    },
+    {
+      "id": "evt_52",
+      "seq": 52,
+      "at": "2026-10-07T06:50:37.000Z",
+      "kind": "royalty_allocated",
+      "label": "Split: Agent B 0.76 · Agent A 0.19 · platform 0.05",
+      "ok": true,
+      "order_id": "order_2"
+    },
+    {
+      "id": "evt_53",
+      "seq": 53,
+      "at": "2026-10-07T06:50:38.000Z",
+      "kind": "payout_confirmed",
+      "label": "Paid 0.76 tUSDM to Agent B",
+      "ok": true,
+      "agent_id": "agent_b",
+      "allocation_id": "alloc_order_2_agent_b",
+      "receipt_id": "rcpt_payout_order_2"
+    },
+    {
+      "id": "evt_54",
+      "seq": 54,
+      "at": "2026-10-07T06:50:39.000Z",
+      "kind": "payout_confirmed",
+      "label": "Paid 0.19 tUSDM to Agent A",
+      "ok": true,
+      "agent_id": "agent_a",
+      "allocation_id": "alloc_order_2_agent_a",
+      "receipt_id": "rcpt_payout_order_2"
+    }
+  ]
+}

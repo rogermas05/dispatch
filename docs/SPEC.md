@@ -30,7 +30,7 @@ Build a reusable knowledge protocol, a paid experience storefront, and a require
 | One price tier, one configured asset (tUSDM), Cardano Preprod | Mainnet, variable pricing, subscriptions, new token |
 | Masumi purchase flow; application royalty ledger; one confirmed Preprod payout | Trustless automatic royalty contract |
 | Creator resolution and schema inspection | Paid creator follow-up hire **(stretch)** |
-| Evidence page: receipts, lineage, run comparison | Polished dashboard, general multi-agent orchestration platform |
+| Replay dashboard (`apps/web`): animated network, task pipeline, search, cold-vs-assisted comparison, royalty flow, receipts | Live push updates, catalog browsing, general multi-agent orchestration platform |
 
 The interface is universal; initial adapter coverage is deliberately small. Capture is automatic after installation and policy configuration. Publication requires evidence of success and permission to share.
 
@@ -70,9 +70,9 @@ flowchart TD
 | Experience Network | Framework-neutral capture, immutable objects, semantic search, paid access, signed receipts, lineage and outcome reporting |
 | Masumi/Cardano | Registered agent identity/discovery and payment settlement; result-hash logging on every paid delivery |
 | Treasury wallet | Receives collected sales; the only key the payout worker holds (§9) |
-| Evidence page | Supporting evidence: run comparison, lineage, receipts; the judges' primary task interface remains Sokosumi |
+| Replay dashboard | What judges and the demo video see: replays the event log as an animated story. Reads one validated feed (`packages/schema`); mock and live data share the shape. Sokosumi remains the task interface |
 
-Suggested stack: Python/FastAPI/Pydantic for Experience API, broker execution and SDK; a small TypeScript Sokosumi worker for platform integration (the CLI and its SKILL.md references are TypeScript); PostgreSQL with pgvector and full-text search, storing object JSON in PostgreSQL rather than separate object storage for the MVP; a PostgreSQL-backed outbox worker; a minimal evidence page. Every language adds a service to deploy and keep alive alongside the Masumi Payment Service, so do not add a third. Direct HTTP platform clients avoid depending on unpublished helpers. Pin dependencies and service/OpenAPI revisions after the integration spike. Provider/model choices are configuration.
+Suggested stack: Python/FastAPI/Pydantic for Experience API, broker execution and SDK; a small TypeScript Sokosumi worker for platform integration (the CLI and its SKILL.md references are TypeScript); PostgreSQL with pgvector and full-text search, storing object JSON in PostgreSQL rather than separate object storage for the MVP; a PostgreSQL-backed outbox worker; a React/Vite replay dashboard. Every language adds a service to deploy and keep alive alongside the Masumi Payment Service, so do not add a third. Direct HTTP platform clients avoid depending on unpublished helpers. Pin dependencies and service/OpenAPI revisions after the integration spike. Provider/model choices are configuration.
 
 Use distinct deployment base URLs for Broker MIP endpoints, Experience Storefront MIP endpoints and application `/v1` APIs (plus a chat endpoint if the chat stretch is attempted). Broker hiring and experience purchasing are separate jobs with separate prices, budgets, identities and receipts.
 
@@ -151,7 +151,7 @@ The context manager alone cannot observe arbitrary code: adapters attach provide
 
 Wrap every Broker provider execution with this capture SDK, including cold-start and experience-assisted work. Persist the final evaluator result, purchased parent refs and an automatic-distillation outbox entry before acknowledging completion; no manual publish step is required for configured demo tasks. Attribution identifies the actual producer Agent A/B and the broker task, not just the gateway.
 
-Implement a generic Python callable/HTTP-tool wrapper plus one provider message/tool adapter (OpenAI-compatible first, which also covers the Z.ai model in `.env.example`). A second adapter (Anthropic) is **(stretch)**; both normalize into the same event contract and neither requires the underlying agent to run on Masumi. **(Stretch)** MCP tools expose `experience_search`, `experience_quote`, `experience_purchase`, `experience_get`, `experience_publish`, and `experience_report_outcome` through the same authorization rules.
+Implement a generic Python callable/HTTP-tool wrapper plus one provider message/tool adapter: **Anthropic** first, since `ANTHROPIC_API_KEY` is the team's shared provider key (ONBOARDING.md). A second adapter (OpenAI-compatible, which also covers the Z.ai model) is **(stretch)**; both normalize into the same event contract and neither requires the underlying agent to run on Masumi. **(Stretch)** MCP tools expose `experience_search`, `experience_quote`, `experience_purchase`, `experience_get`, `experience_publish`, and `experience_report_outcome` through the same authorization rules.
 
 Pipeline: redact locally → queue → extract schema-constrained lessons → validate referenced evidence and applicability → sign → publish/index. Default private; explicitly configured policies can auto-publish sanitized, licensed demo tasks. Success without a valid evaluator stays a draft. Failed runs remain private but failed attempts within a successful run become useful lessons. Never collect hidden chain-of-thought; capture observable tool behavior and concise reported lessons.
 
@@ -302,10 +302,10 @@ experience-network/
   apps/sokosumi-coworker/   # TypeScript journaled task worker, task result delivery
   apps/api/                 # Experience API, auth/search/commerce, Storefront MIP service
   apps/worker/              # distillation, index, anchor, reconciliation, royalty payout
-  apps/web/                 # minimal evidence page: run comparison, lineage, receipts
-  packages/schema/          # Experience Objects, BrokerTask, event/result contracts
+  apps/web/                 # replay dashboard: network animation, tasks, search, comparison, royalties, receipts
+  packages/schema/          # dashboard feed contract (zod → JSON Schema), royalty/scoring policy + shared vectors, mock story
   packages/sdk-python/      # capture, retrieval, budgets, provider callbacks
-  packages/adapters/        # generic, OpenAI-compatible; Anthropic and MCP (stretch)
+  packages/adapters/        # generic, Anthropic; OpenAI-compatible and MCP (stretch)
   packages/sokosumi/        # runtime-key clients, task journal, task mappings, contract fixtures
   packages/masumi/          # registry/payment/hiring clients, Broker/Storefront contracts
   packages/cardano/         # key/address challenge, treasury payout, anchor (stretch)
@@ -334,10 +334,11 @@ Provision admin credentials separately from runtime. `PAYMENTS_MODE=mock|preprod
 - [ ] Task 2 uses a fresh context, buys Task 1's experience through a live Masumi/Cardano order, returns a verified result to its Sokosumi task and automatically publishes a tested descendant.
 - [ ] Third purchase (run hours ahead, §9) produces inspectable lineage, royalty allocations from the collected amount, and a confirmed upstream payout from the treasury.
 - [ ] Creator resolution and schema inspection work.
+- [ ] The replay dashboard renders the live feed (`mode: preprod`) end to end; every real transaction shows a verified badge linking to the Preprod explorer, and mock data is never shown as verified (enforced by the feed schema).
 - [ ] Matched cold/assisted metrics include search, purchase, verification and publication overhead, with no artificial sleeps or preloaded solution.
 - [ ] Entitlement, tenant boundary, tamper rejection, invalid lineage, retry and refund/cancellation behavior are verified.
 
-**Stretch, in order, only after every box above is checked:** second provider adapter; public provenance anchor; Sokosumi chat capability and conversational delivery; paid creator follow-up hire; MCP tools; dashboard polish.
+**Stretch, in order, only after every box above is checked:** second provider adapter; public provenance anchor; Sokosumi chat capability and conversational delivery; paid creator follow-up hire; MCP tools; live push updates on the dashboard.
 
 ### Judge-facing demo script
 
@@ -364,12 +365,12 @@ Keep `docs/demo-evidence.json` with Broker identifier, registration/listing URL,
 ## 14. Build order
 
 1. **Sokosumi/Masumi integration spike first** (PLAN.md Checkpoints 0–4, with the Broker as the agent). Verify organizer track requirements and deadline; pin API contracts. Register and connect the Coworker (`tasks`, `GRANTED`). Deploy a minimal Broker MIP service, register it on Cardano Preprod with tUSDM pricing, and verify the actual listing and a real hire. Prove one task's result returns to its Sokosumi task and one paid task collects. In the same spike, record: the `unlockTime` offset, whether MPS can send collections to a treasury address, whether one MPS can buy from its own selling identity, how dynamic pricing maps to a fixed tier, and the "signed seller terms" step. Request chat whitelisting now, but do not wait on it.
-2. **Core contracts and durable orchestration.** Schema, canonicalization and signing with a tamper test, Coworker binding, task journal with a unique source-task constraint, broker states, budget reservations, delivery/publication outboxes, immutable objects, entitlement/ledger constraints. Broker enforces search-before-work even against an initially empty index. Keep `PAYMENTS_MODE=mock` working from here so retrieval and lineage can be built while waiting on chain confirmations.
+2. **Core contracts and durable orchestration.** The dashboard feed contract and the replay dashboard against the mock story are built first and in parallel (done: `packages/schema`, `apps/web`); the backend must emit the same feed. Schema, canonicalization and signing with a tamper test, Coworker binding, task journal with a unique source-task constraint, broker states, budget reservations, delivery/publication outboxes, immutable objects, entitlement/ledger constraints. Broker enforces search-before-work even against an initially empty index. Keep `PAYMENTS_MODE=mock` working from here so retrieval and lineage can be built while waiting on chain confirmations.
 3. **Task 1 vertical slice.** Generic tool wrapper and the OpenAI-compatible adapter, fixture A evaluator, result returned to Sokosumi, then automatic redact/distill/sign/publish/index. Prove the full cold-start cycle before any UI.
 4. **Live commerce.** Register the Storefront; integrate quotes, Masumi payment reconciliation, entitled retrieval and result integrity. Verify collection/refund terms, treasury collection, exact raw asset amounts and idempotent retries.
 5. **Task 2 paid reuse.** Hybrid retrieval and applicability filtering. Start a fresh Sokosumi task, search/buy `exp_A`, reuse it, validate fixture B, return the result and publish a tested descendant. Measure against B's matched cold baseline. **Immediately start Agent C's purchase of `exp_B`** so `unlockTime` runs in the background.
 6. **Compounding and resilience.** Frozen lineage/license splits, allocations from the collected amount, treasury payout once C's order collects. Rehearse restart/cancellation, privacy, entitlement and tamper checks.
-7. **Submission and rehearsal.** Evidence page, held-out queries, verified metrics comparison, evidence manifest, setup README, judge script and slides with the embedded recording (PLAN.md §10). Then the stretch list in §13, in order.
+7. **Submission and rehearsal.** Switch the dashboard to the live feed, held-out queries, verified metrics comparison, evidence manifest, setup README, judge script and slides with the embedded recording (PLAN.md §10). Then the stretch list in §13, in order.
 
 ## 15. Assumptions and open questions
 
@@ -397,3 +398,5 @@ This spec defines the application additions; it does not claim Masumi already su
 | Spike also measures `unlockTime`, treasury collection, buy-from-self, dynamic pricing and the "signed seller terms" step | Each one blocks a later step if it turns out to be unsupported. |
 | Env var names aligned with `.env.example` and FINDINGS §6 | Revision 2 introduced names that don't exist in the repo. |
 | Reranker, encryption at rest, retention jobs and S3 deferred; `family_id/revision` reserved | Not needed for the vertical slice. |
+| Replay dashboard promoted to a required deliverable, built first against a mock feed | It is what judges and the demo video see. Mock and live data share one validated feed, so visuals never wait on infrastructure, and the schema forbids mock data from showing as verified. |
+| First provider adapter is Anthropic | `ANTHROPIC_API_KEY` is the team's shared key (ONBOARDING.md). |

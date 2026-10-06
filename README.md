@@ -152,6 +152,23 @@ Vendor creation requires one. Connection to the TOKEN2049 organization
 
 ---
 
+## Dashboard
+
+The replay dashboard (`apps/web`) shows the Experience Network story ([`docs/SPEC.md`](docs/SPEC.md)):
+tasks arriving from Sokosumi, search before work, purchases through escrow, published
+experiences and royalties flowing back upstream.
+
+```bash
+npm install
+npm run dev        # http://localhost:5173, plays the mock story feed
+npm test           # schema, royalty vectors, replay logic
+```
+
+It reads one feed validated by `packages/schema` (`VITE_FEED_URL`, default
+`/mock-feed.json`). Until the backend emits a live feed, everything shown is **mock**
+data and is labelled that way on screen; the schema rejects a mock feed that claims a
+verified transaction.
+
 ## What the agent does
 
 Open decision, deliberately deferred. The infrastructure is concept-agnostic and
