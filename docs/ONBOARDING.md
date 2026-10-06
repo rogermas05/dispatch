@@ -68,7 +68,7 @@ fine — with one exception noted in §5.
 SOKOSUMI_ORG_ID=01a10fd0-67f5-709f-9874-4627dc671212
 SOKOSUMI_ORG_SLUG=substantiate-0e6jg5
 SOKOSUMI_VENDOR_ID=01a10fd1-9907-77ba-92d0-ac202cedd643
-SOKOSUMI_COWORKER_ID=01a10fd1-dd7b-7415-91e1-0bf91fb6d76c
+SOKOSUMI_COWORKER_ID=01a11058-0fba-71dc-a1b9-acd31d538001
 SOKOSUMI_WORKSPACE_ID=01a10fc8-74b3-76c5-8281-53c228e71459
 SOKOSUMI_EVENT_WORKSPACE_ID=01a109d1-32a9-71a3-a0e3-658b2a7987cd
 ```
@@ -98,16 +98,17 @@ To be added to the `Substantiate` organization, send Aman your account email.
 | Thing | Value |
 |---|---|
 | Organization | `Substantiate` (`substantiate-0e6jg5`), Aman is `owner` |
-| Vendor | being recreated as **Dispatch** — see note below |
-| Coworker | being recreated as **Dispatch** |
+| Vendor | `Substantiate` (`substantiate`) — name is stuck, see note |
+| Coworker | **`Dispatch`** (`dispatch`) — `01a11058-0fba-71dc-a1b9-acd31d538001` |
 | Workspace access | `GRANTED` — in the **Personal** Workspace, not the org |
 | Credits | 3,250 on the free personal seat |
 
-> **Naming.** The organization, Vendor and Coworker were created under the old
-> concept's name, `Substantiate`. CLI 1.0.4 exposes no vendor-rename command, so the
-> Vendor and Coworker are being recreated as Dispatch. The organization name is
-> cosmetic and is being left alone. **The IDs below will change** — re-read this
-> file after the next push.
+> **Naming.** Sokosumi allows **one Vendor per account**, so the Vendor keeps the
+> old name `Substantiate`. That is the publisher identity and is barely surfaced.
+> The Coworker is what buyers see and hire, and it is `Dispatch` with a clean
+> `dispatch` slug. The original Coworker could be renamed but not re-slugged, so a
+> fresh one was registered and the old record is marked `DEPRECATED - do not use`.
+> **Use `01a11058-0fba-71dc-a1b9-acd31d538001`.**
 
 Checkpoints 0 and 1 are VERIFIED. Evidence is in `.local/` — gitignored, so ask
 Aman for a copy if you need it.
