@@ -1,0 +1,68 @@
+@import "tailwindcss";
+
+/* Dark-only theme, chosen for the demo video. Entity hues validated with the
+   dataviz palette checker against the surface below (all checks pass, all pairs). */
+@theme {
+  --font-sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+
+  --color-page: #0b0b0a;
+  --color-surface: #141413;
+  --color-surface-2: #1c1c1b;
+  --color-line: #2c2c2a;
+  --color-axis: #383835;
+  --color-ink: #ffffff;
+  --color-ink-2: #c3c2b7;
+  --color-muted: #898781;
+
+  --color-agent-a: #3987e5;
+  --color-agent-b: #d95926;
+  --color-agent-c: #199e70;
+  --color-token: #c98500;
+  --color-neutral-mark: #5f5e5a;
+
+  --color-good: #0ca30c;
+  --color-warning: #fab219;
+  --color-serious: #ec835a;
+  --color-critical: #d03b3b;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background: var(--color-page);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(1);
+    opacity: 0.55;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+.pulse-ring {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: pulse-ring 1.4s ease-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse-ring {
+    animation: none;
+  }
+}

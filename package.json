@@ -1,13 +1,16 @@
 {
   "name": "token-origins",
   "version": "1.0.0",
-  "description": "An AI agent that earns real money on Cardano.",
-  "main": "index.js",
+  "description": "Dispatch - a voice agent that makes phone calls for humans and other AI agents, paid on-chain via Masumi.",
   "directories": {
     "doc": "docs"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "npm run dev -w @token-origins/web",
+    "build": "npm run build -w @token-origins/web",
+    "test": "npm test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "mock:feed": "npm run mock:feed -w @token-origins/web"
   },
   "repository": {
     "type": "git",
@@ -23,5 +26,10 @@
   "homepage": "https://github.com/rogermas05/token-origins#readme",
   "devDependencies": {
     "@masumi_network/sokosumi": "^1.0.4"
-  }
+  },
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
 }

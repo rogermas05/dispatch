@@ -1,0 +1,312 @@
+{
+  "description": "Shared royalty test vectors (SPEC.md \u00a79). Any implementation, TypeScript or Python, must reproduce these exactly. Amounts are integer asset units as strings; bps total 10000. Split entry 0 is always the experience's own creator.",
+  "freeze_split": [
+    {
+      "name": "root experience keeps everything",
+      "creator_id": "agent_a",
+      "parent_splits": [],
+      "expected": [
+        {
+          "recipient_id": "agent_a",
+          "bps": 10000
+        }
+      ]
+    },
+    {
+      "name": "child of a root: 80% creator, 20% to parent",
+      "creator_id": "agent_b",
+      "parent_splits": [
+        [
+          {
+            "recipient_id": "agent_a",
+            "bps": 10000
+          }
+        ]
+      ],
+      "expected": [
+        {
+          "recipient_id": "agent_b",
+          "bps": 8000
+        },
+        {
+          "recipient_id": "agent_a",
+          "bps": 2000
+        }
+      ]
+    },
+    {
+      "name": "grandchild expands the parent's frozen vector: 80/16/4",
+      "creator_id": "agent_c",
+      "parent_splits": [
+        [
+          {
+            "recipient_id": "agent_b",
+            "bps": 8000
+          },
+          {
+            "recipient_id": "agent_a",
+            "bps": 2000
+          }
+        ]
+      ],
+      "expected": [
+        {
+          "recipient_id": "agent_c",
+          "bps": 8000
+        },
+        {
+          "recipient_id": "agent_b",
+          "bps": 1600
+        },
+        {
+          "recipient_id": "agent_a",
+          "bps": 400
+        }
+      ]
+    },
+    {
+      "name": "two parents share 20% equally and duplicate recipients merge",
+      "creator_id": "agent_c",
+      "parent_splits": [
+        [
+          {
+            "recipient_id": "agent_a",
+            "bps": 10000
+          }
+        ],
+        [
+          {
+            "recipient_id": "agent_b",
+            "bps": 8000
+          },
+          {
+            "recipient_id": "agent_a",
+            "bps": 2000
+          }
+        ]
+      ],
+      "expected": [
+        {
+          "recipient_id": "agent_c",
+          "bps": 8000
+        },
+        {
+          "recipient_id": "agent_a",
+          "bps": 1200
+        },
+        {
+          "recipient_id": "agent_b",
+          "bps": 800
+        }
+      ]
+    },
+    {
+      "name": "the creator reusing its own parent merges into the creator share",
+      "creator_id": "agent_a",
+      "parent_splits": [
+        [
+          {
+            "recipient_id": "agent_a",
+            "bps": 10000
+          }
+        ]
+      ],
+      "expected": [
+        {
+          "recipient_id": "agent_a",
+          "bps": 10000
+        }
+      ]
+    },
+    {
+      "name": "bps rounding residue goes to the creator",
+      "creator_id": "agent_d",
+      "parent_splits": [
+        [
+          {
+            "recipient_id": "agent_a",
+            "bps": 10000
+          }
+        ],
+        [
+          {
+            "recipient_id": "agent_b",
+            "bps": 10000
+          }
+        ],
+        [
+          {
+            "recipient_id": "agent_c",
+            "bps": 10000
+          }
+        ]
+      ],
+      "expected": [
+        {
+          "recipient_id": "agent_d",
+          "bps": 8002
+        },
+        {
+          "recipient_id": "agent_a",
+          "bps": 666
+        },
+        {
+          "recipient_id": "agent_b",
+          "bps": 666
+        },
+        {
+          "recipient_id": "agent_c",
+          "bps": 666
+        }
+      ]
+    }
+  ],
+  "allocate": [
+    {
+      "name": "spec example: root sale of 100000",
+      "collected": "100000",
+      "fee_bps": 500,
+      "split": [
+        {
+          "recipient_id": "agent_a",
+          "bps": 10000
+        }
+      ],
+      "expected_fee": "5000",
+      "expected": [
+        {
+          "recipient_id": "agent_a",
+          "amount": "95000"
+        }
+      ]
+    },
+    {
+      "name": "spec example: child sale of 100000",
+      "collected": "100000",
+      "fee_bps": 500,
+      "split": [
+        {
+          "recipient_id": "agent_b",
+          "bps": 8000
+        },
+        {
+          "recipient_id": "agent_a",
+          "bps": 2000
+        }
+      ],
+      "expected_fee": "5000",
+      "expected": [
+        {
+          "recipient_id": "agent_b",
+          "amount": "76000"
+        },
+        {
+          "recipient_id": "agent_a",
+          "amount": "19000"
+        }
+      ]
+    },
+    {
+      "name": "grandchild sale of 1 tUSDM",
+      "collected": "1000000",
+      "fee_bps": 500,
+      "split": [
+        {
+          "recipient_id": "agent_c",
+          "bps": 8000
+        },
+        {
+          "recipient_id": "agent_b",
+          "bps": 1600
+        },
+        {
+          "recipient_id": "agent_a",
+          "bps": 400
+        }
+      ],
+      "expected_fee": "50000",
+      "expected": [
+        {
+          "recipient_id": "agent_c",
+          "amount": "760000"
+        },
+        {
+          "recipient_id": "agent_b",
+          "amount": "152000"
+        },
+        {
+          "recipient_id": "agent_a",
+          "amount": "38000"
+        }
+      ]
+    },
+    {
+      "name": "fee is floored and an exact split leaves no residue",
+      "collected": "999",
+      "fee_bps": 500,
+      "split": [
+        {
+          "recipient_id": "agent_c",
+          "bps": 8000
+        },
+        {
+          "recipient_id": "agent_b",
+          "bps": 1600
+        },
+        {
+          "recipient_id": "agent_a",
+          "bps": 400
+        }
+      ],
+      "expected_fee": "49",
+      "expected": [
+        {
+          "recipient_id": "agent_c",
+          "amount": "760"
+        },
+        {
+          "recipient_id": "agent_b",
+          "amount": "152"
+        },
+        {
+          "recipient_id": "agent_a",
+          "amount": "38"
+        }
+      ]
+    },
+    {
+      "name": "floor each allocation, residue to the creator",
+      "collected": "1001",
+      "fee_bps": 500,
+      "split": [
+        {
+          "recipient_id": "agent_c",
+          "bps": 8000
+        },
+        {
+          "recipient_id": "agent_b",
+          "bps": 1600
+        },
+        {
+          "recipient_id": "agent_a",
+          "bps": 400
+        }
+      ],
+      "expected_fee": "50",
+      "expected": [
+        {
+          "recipient_id": "agent_c",
+          "amount": "761"
+        },
+        {
+          "recipient_id": "agent_b",
+          "amount": "152"
+        },
+        {
+          "recipient_id": "agent_a",
+          "amount": "38"
+        }
+      ]
+    }
+  ]
+}

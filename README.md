@@ -106,6 +106,30 @@ untrusted *audio* — so it is prompt-injectable; the Masumi node owns the walle
 
 ---
 
+## Demo dashboard
+
+`apps/web` replays the event log as an animated story — tasks arriving from
+Sokosumi, escrow locking, the call running, the result hash submitted, and the
+collection transaction confirming on-chain. This is what judges and the demo video
+see; Sokosumi remains the actual task interface.
+
+```bash
+npm install
+npm run dev        # http://localhost:5173
+npm test           # schema, replay logic
+```
+
+It reads one feed validated by `packages/schema` (`VITE_FEED_URL`, default
+`/mock-feed.json`). Until the worker emits a live feed everything shown is **mock**
+data, labelled as such on screen — and the schema rejects a mock feed that claims a
+verified transaction, which is the VERIFIED/REPORTED rule enforced in code.
+
+The escrow and receipt views are product-agnostic and carry over unchanged. The
+call-specific panels are being repointed from the dashboard's original concept
+(see [`docs/archive/`](docs/archive/)).
+
+---
+
 ## Operational rules
 
 Each maps to a way this project fails irrecoverably.
