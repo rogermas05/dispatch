@@ -13,7 +13,8 @@
     "mock:feed": "npm run mock:feed -w @token-origins/web",
     "agent:api": "npm run agent:api -w @token-origins/agent-api",
     "worker": "npm run worker -w @token-origins/worker",
-    "verify:receipt": "node scripts/verify-seller-receipt.mjs"
+    "verify:receipt": "node scripts/verify-seller-receipt.mjs",
+    "feed:emit": "node --experimental-strip-types scripts/emit-feed.mjs"
   },
   "repository": {
     "type": "git",

@@ -116,6 +116,7 @@ untrusted *audio* — so it is prompt-injectable; the Masumi node owns the walle
 npm run agent:api        # MIP-003 endpoints on :3013
 npm run worker           # poll Sokosumi, run calls (exactly one instance, ever)
 npm run verify:receipt   # query the chain for seller receipt — Checkpoint 4 evidence
+npx tsx scripts/emit-feed.mjs apps/web/public/mock-feed.json   # rebuild the dashboard feed from real runs
 npm test                 # 65 tests
 ```
 
