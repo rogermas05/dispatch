@@ -49,7 +49,7 @@ CLI 1.0.4 (project-local), Anthropic API reachable.
 |---|---|---|
 | 0 | Prereqs installed, Sokosumi auth works, `.env.local` exists | ✅ **VERIFIED** |
 | 1 | Vendor + Coworker created, `workspaceAccess.status: GRANTED` | ✅ **VERIFIED** |
-| 2T | One real outbound call placed, with recording and transcript | ☐ |
+| 2T | One real outbound call placed, with recording and transcript | ◐ partial — assistant lifecycle VERIFIED, no call placed yet |
 | 2 | A task reaches `COMPLETED` with a real call result — unpaid | ☐ |
 | 3 | `RegistrationConfirmed` on-chain; `/availability` 200; wallet funded | ☐ |
 | 4 | **One paid call settles — confirmed collection tx, USDM received** | ☐ |
@@ -105,6 +105,18 @@ Signing keys stay out of the agent process. The agent handles untrusted input �
 untrusted *audio* — so it is prompt-injectable; the Masumi node owns the wallets.
 
 ---
+
+## Running it
+
+```bash
+npm run agent:api        # MIP-003 endpoints on :3013
+npm run worker           # poll Sokosumi, run calls (exactly one instance, ever)
+npm run verify:receipt   # query the chain for seller receipt — Checkpoint 4 evidence
+npm test                 # 65 tests
+```
+
+`npm run worker` uses the mock call provider unless `TELEPHONY_PROVIDER=telnyx`.
+The mock never dials and says so in every transcript it returns.
 
 ## Demo dashboard
 

@@ -10,7 +10,10 @@
     "build": "npm run build -w @token-origins/web",
     "test": "npm test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "mock:feed": "npm run mock:feed -w @token-origins/web"
+    "mock:feed": "npm run mock:feed -w @token-origins/web",
+    "agent:api": "npm run agent:api -w @token-origins/agent-api",
+    "worker": "npm run worker -w @token-origins/worker",
+    "verify:receipt": "node scripts/verify-seller-receipt.mjs"
   },
   "repository": {
     "type": "git",
