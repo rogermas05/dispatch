@@ -67,6 +67,9 @@ interface TelnyxMessage {
 	text?: string | null;
 	sent_at?: string;
 	created_at?: string;
+	/** Present when the entry is a tool invocation or its result, not speech. */
+	tool_calls?: unknown;
+	tool_call_id?: string | null;
 }
 
 interface TelnyxConversation {
@@ -306,6 +309,18 @@ HARD RULES
 
 export { toTranscript as __test_toTranscript };
 
+/** JSON-ish text is a tool payload that leaked into the message stream. */
+function isMachinePayload(text: string): boolean {
+	const t = text.trim();
+	if (!(t.startsWith('{') && t.endsWith('}')) && !(t.startsWith('[') && t.endsWith(']'))) return false;
+	try {
+		JSON.parse(t);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
 function toTranscript(messages: TelnyxMessage[]): Transcript {
 	// Telnyx returns newest-first. A transcript read backwards is worse than no
 	// transcript, because it reads as a coherent conversation that never happened.
@@ -318,6 +333,11 @@ function toTranscript(messages: TelnyxMessage[]): Transcript {
 
 	const turns = ordered
 		.filter((m) => typeof m.text === 'string' && m.text.trim().length > 0)
+		// Tool invocations and their results are recorded as conversation
+		// entries. They are not speech, and a transcript that quotes
+		// `{"data":{"result":"ok"}}` as something a person said is wrong in a
+		// document we are asking a buyer to rely on.
+		.filter((m) => !m.tool_call_id && !m.tool_calls && !isMachinePayload(m.text!))
 		.map((m) => ({
 			speaker: (m.role === 'assistant' ? 'agent' : 'other') as 'agent' | 'other',
 			text: m.text!.trim(),

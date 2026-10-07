@@ -55,3 +55,32 @@ describe('toTranscript', () => {
 		expect(toTranscript([]).turns).toEqual([]);
 	});
 });
+
+describe('toTranscript — machine payloads', () => {
+	it('drops tool results that were recorded as conversation turns', () => {
+		// Observed on a real paid call: the final "turn" was {"data":{"result":"ok"}},
+		// which a transcript would otherwise attribute to the person on the phone.
+		const t = toTranscript([
+			{ role: 'assistant', text: 'Goodbye.', sent_at: '2026-10-07T05:26:00.000Z' },
+			{ role: 'user', text: '{"data":{"result":"ok"}}', sent_at: '2026-10-07T05:26:05.000Z' },
+		] as never);
+		expect(t.turns).toHaveLength(1);
+		expect(t.text).not.toMatch(/result/);
+	});
+
+	it('keeps speech that merely contains braces', () => {
+		const t = toTranscript([
+			{ role: 'user', text: 'my account is {not} a number', sent_at: '2026-10-07T05:26:00.000Z' },
+		] as never);
+		expect(t.turns).toHaveLength(1);
+	});
+
+	it('drops entries carrying a tool_call_id', () => {
+		const t = toTranscript([
+			{ role: 'user', text: 'ok', tool_call_id: 'tc-1', sent_at: '2026-10-07T05:26:00.000Z' },
+			{ role: 'user', text: 'real speech', sent_at: '2026-10-07T05:26:01.000Z' },
+		] as never);
+		expect(t.turns).toHaveLength(1);
+		expect(t.turns[0]?.text).toBe('real speech');
+	});
+});
