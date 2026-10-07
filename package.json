@@ -33,7 +33,8 @@
   "homepage": "https://github.com/rogermas05/token-origins#readme",
   "devDependencies": {
     "@masumi_network/sokosumi": "^1.0.4",
-    "@railway/cli": "^5.63.4"
+    "@railway/cli": "^5.63.4",
+    "playwright": "^1.63.0"
   },
   "private": true,
   "workspaces": [
