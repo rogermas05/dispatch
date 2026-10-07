@@ -73,7 +73,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AgentApiConfig
 							? null
 							: {
 									unit: env.USDM_UNIT || (() => { throw new Error('USDM_UNIT is required for dynamic pricing'); })(),
-									amount: toAtomic(env.TASK_PRICE_USDM || '1'),
+									// Base fee: what it costs to place a call at all.
+									amount: toAtomic(env.TASK_PRICE_USDM || '0.05'),
+									// Per expected minute. Hold time is the cost actually being
+									// absorbed, so a call budgeted for forty minutes should not
+									// price the same as one budgeted for three.
+									perMinute: toAtomic(env.PRICE_PER_MINUTE_USDM || '0.05'),
 								},
 					windows: {
 						payBy: int(env, 'ESCROW_PAY_BY_MINUTES', 15),

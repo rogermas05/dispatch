@@ -181,6 +181,26 @@ export class PaymentServiceClient {
  * pay-by, then research, then every call at its maximum length, then a margin.
  * Later windows move by the same amount so the dispute period is unchanged.
  */
+/**
+ * Quote a job: base fee, plus expected minutes, plus any research budget.
+ *
+ * Priced on the duration *ceiling* rather than actual time, because escrow locks
+ * a fixed amount before the call runs — there is no billing afterwards. The
+ * buyer is paying for a call of at most that length, and knows the number before
+ * agreeing to it.
+ */
+export function priceForJob(
+	price: { unit: string; amount: string; perMinute?: string },
+	job: { calls: number; maxDurationSeconds: number; researchBudget: bigint },
+): { unit: string; amount: string } {
+	const minutes = BigInt(Math.max(1, job.calls) * Math.ceil(job.maxDurationSeconds / 60));
+	const perMinute = BigInt(price.perMinute ?? '0');
+	return {
+		unit: price.unit,
+		amount: (BigInt(price.amount) + minutes * perMinute + job.researchBudget).toString(),
+	};
+}
+
 export function windowsForJob(
 	base: PaymentConfig['windows'],
 	job: { calls: number; maxDurationSeconds: number; researchMinutes: number },

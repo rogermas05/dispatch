@@ -5,7 +5,7 @@ import { runHire } from './buyer/hire.js';
 import { loadConfig } from './config.js';
 import { executeJob, type ExecuteDeps } from './execute.js';
 import { parseCallInput } from './input.js';
-import { PaymentServiceClient, windowsForJob } from './payment.js';
+import { PaymentServiceClient, priceForJob, windowsForJob } from './payment.js';
 import { JobRunner } from './runner.js';
 import { AgentApi, createAgentApiServer } from './server.js';
 import { JobStore } from './store.js';
@@ -42,9 +42,13 @@ const api = new AgentApi({
 	paymentServiceReady: async () => payments !== null,
 	createEscrow: async ({ inputHash, identifierFromPurchaser, jobId, plan, brief }) => {
 		if (!payments || !config.payment) throw new Error('payment service is not configured (PAYMENT_SERVICE_URL, MPS_PAY_KEY, AGENT_IDENTIFIER)');
-		// Price = base fee + whatever research budget the hirer granted; windows fit every planned call.
+		// Base fee + expected minutes + any research budget; windows fit every planned call.
 		const price = config.payment.price
-			? { unit: config.payment.price.unit, amount: (BigInt(config.payment.price.amount) + plan.researchBudget).toString() }
+			? priceForJob(config.payment.price, {
+					calls: plan.numbers.length,
+					maxDurationSeconds: brief.maxDurationSeconds,
+					researchBudget: plan.researchBudget,
+				})
 			: undefined;
 		const windows = windowsForJob(config.payment.windows, {
 			calls: plan.numbers.length,
