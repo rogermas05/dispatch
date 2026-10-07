@@ -32,10 +32,14 @@ RUN mkdir -p /data && chown -R node:node /data
 # No VOLUME directive: Railway rejects it and supplies its own volumes. The
 # worker's journal must survive a restart — without it a task already in flight
 # could be picked up a second time — so /data is a Railway Volume in production.
-USER node
+#
+# The container starts as root only long enough for the entrypoint to take
+# ownership of that mount, then drops to `node`.
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
 # PROCESS=api serves MIP-003 and runs paid jobs; PROCESS=worker polls Sokosumi.
 # Exactly one replica of each — see README operational rule 2.
 ENV PROCESS=api
 EXPOSE 3013
-CMD ["sh", "-c", "if [ \"$PROCESS\" = worker ]; then exec npx tsx apps/worker/src/index.ts; else exec npx tsx apps/agent-api/src/index.ts; fi"]
+CMD ["if [ \"$PROCESS\" = worker ]; then exec npx tsx apps/worker/src/index.ts; else exec npx tsx apps/agent-api/src/index.ts; fi"]
