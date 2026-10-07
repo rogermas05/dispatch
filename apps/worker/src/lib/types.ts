@@ -12,6 +12,12 @@ export interface CallBrief {
 	 * on-chain, so it is the record of what we were actually authorized to do.
 	 */
 	authorization: string;
+	/**
+	 * Who the call is being made for, as the person answering would recognise
+	 * them — "Aman", "your son Aman", "a customer". Used in the greeting, which
+	 * should explain why the phone rang rather than what is on the other end.
+	 */
+	onBehalfOf?: string;
 	/** Facts the agent may need mid-call: account numbers, names, dates. */
 	context?: Record<string, string>;
 	/** Hard ceiling on call length. Guards submitResultTime. */

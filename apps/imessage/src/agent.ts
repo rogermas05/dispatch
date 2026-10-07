@@ -70,6 +70,11 @@ const TOOLS: Anthropic.Tool[] = [
 					description:
 						'Exactly what you may agree to on their behalf. Be conservative — only what they actually granted.',
 				},
+				on_behalf_of: {
+					type: 'string',
+					description:
+						"Who the call is for, phrased as the person answering would recognise them — the requester's name, or their relationship to the answerer if the request makes it clear.",
+				},
 				context: { type: 'string', description: 'Facts needed on the call: account numbers, names, dates' },
 			},
 			required: ['to', 'objective', 'authorization'],
@@ -115,7 +120,13 @@ export async function respond(convo: Conversation, userText: string, deps: Agent
 		}
 
 		let result: string;
-		const args = toolUse.input as { to: string; objective: string; authorization: string; context?: string };
+		const args = toolUse.input as {
+			to: string;
+			objective: string;
+			authorization: string;
+			context?: string;
+			on_behalf_of?: string;
+		};
 
 		if (allowed && !allowed.has(args.to)) {
 			// Refused before quoting, not after. The allowlist is what separates a
@@ -128,7 +139,7 @@ export async function respond(convo: Conversation, userText: string, deps: Agent
 				// Quote and accept in one go. Splitting them across two messages was
 				// a turn of friction for a price measured in cents; the number is
 				// still said out loud before any money moves.
-				const quote = await quoteCall(args);
+				const quote = await quoteCall({ ...args, onBehalfOf: args.on_behalf_of });
 				if (quote.priceUsdm) await deps.notify(`${quote.priceUsdm} tUSDM — locking it in now.`);
 				const paid = await payAndRun(quote, { onFundsLocked: () => deps.notify('payment locked, calling now') });
 				result = JSON.stringify({

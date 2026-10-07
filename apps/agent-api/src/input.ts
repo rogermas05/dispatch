@@ -53,6 +53,16 @@ export const INPUT_SCHEMA = {
 			validations: [{ validation: 'format', value: 'tel-pattern' }],
 		},
 		{
+			id: 'on_behalf_of',
+			type: 'text',
+			name: 'On behalf of',
+			data: {
+				description:
+					'Who the call is for, as the person answering would recognise them. Used in the greeting so the call opens with why the phone rang.',
+			},
+			validations: [{ validation: 'optional', value: 'true' }, { validation: 'max', value: String(MAX_TEXT) }],
+		},
+		{
 			id: 'objective',
 			type: 'textarea',
 			name: 'Objective',
@@ -131,7 +141,7 @@ export const INPUT_SCHEMA = {
 	],
 } as const;
 
-const KNOWN_FIELDS = new Set(['to', 'objective', 'authorization', 'context', 'max_duration_seconds', 'additional_numbers', 'call_plan', 'research_budget_usdm']);
+const KNOWN_FIELDS = new Set(['to', 'objective', 'authorization', 'on_behalf_of', 'context', 'max_duration_seconds', 'additional_numbers', 'call_plan', 'research_budget_usdm']);
 
 export interface CallPolicy {
 	/** E.164 numbers Dispatch may dial. null means unrestricted (mock telephony only). */
@@ -176,6 +186,7 @@ export function parseCallInput(input: Record<string, unknown>, policy: CallPolic
 	const unknown = Object.keys(input).filter((k) => !KNOWN_FIELDS.has(k));
 	if (unknown.length) errors.push(`unknown fields: ${unknown.join(', ')}`);
 
+	const onBehalfOf = text(input.on_behalf_of) ?? undefined;
 	const to = text(input.to);
 	if (!to || !E164.test(to)) {
 		errors.push('to must be an E.164 phone number, e.g. +14155550123');
@@ -239,6 +250,7 @@ export function parseCallInput(input: Record<string, unknown>, policy: CallPolic
 			to: to!,
 			objective: objective!,
 			authorization: authorization!,
+			...(onBehalfOf ? { onBehalfOf } : {}),
 			...(context ? { context: { notes: context } } : {}),
 			maxDurationSeconds: duration,
 		},

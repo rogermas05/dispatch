@@ -19,6 +19,8 @@ export interface PaidCallBrief {
 	objective: string;
 	authorization: string;
 	context?: string;
+	/** Who the call is for, as the answerer would recognise them. */
+	onBehalfOf?: string;
 }
 
 export interface Progress {
@@ -87,6 +89,7 @@ export async function quoteCall(brief: PaidCallBrief): Promise<Quote> {
 				to: brief.to,
 				objective: brief.objective,
 				authorization: brief.authorization,
+				...(brief.onBehalfOf ? { on_behalf_of: brief.onBehalfOf } : {}),
 				...(brief.context ? { context: brief.context } : {}),
 			},
 		}),

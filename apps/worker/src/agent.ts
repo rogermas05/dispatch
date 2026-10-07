@@ -29,6 +29,7 @@ const briefSchema = z.object({
 	to: z.string().min(3),
 	objective: z.string().min(1),
 	authorization: z.string(),
+	onBehalfOf: z.union([z.string(), z.null()]).optional().transform((v) => v?.trim() || undefined),
 	context: z
 		.union([z.record(z.string()), z.string(), z.null()])
 		.optional()
@@ -130,6 +131,11 @@ Return ONLY a JSON object: {to, objective, authorization, context, maxDurationSe
 
 - "to" is an E.164 phone number taken from the request. Never invent one.
 - "objective" is what the call must achieve, in plain language.
+- "onBehalfOf" is who the call is for, phrased as the person answering would
+  recognise them. If the request names someone ("call my mum", "tell my landlord"),
+  use the relationship from the answerer's side — "call my mum" becomes "your son"
+  or "your daughter" only if the request makes that clear, otherwise use the
+  requester's name. If nothing identifies them, leave it out.
 - "authorization" is what the caller may commit to on the buyer's behalf. Be
   conservative: include only what the request actually grants. If the request
   grants nothing explicit, say so plainly. This text is hashed on-chain and is
