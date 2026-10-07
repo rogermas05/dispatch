@@ -31,6 +31,7 @@ export function selectProvider(env: NodeJS.ProcessEnv = process.env): CallProvid
 			texmlAppId: env.TELNYX_TEXML_APP_ID || undefined,
 			fromNumber: required('TELNYX_FROM_NUMBER'),
 			model: env.TELNYX_MODEL || undefined,
+			modelApiKeyRef: env.TELNYX_MODEL_API_KEY_REF || undefined,
 			voice,
 			voiceApiKeyRef: env.TELNYX_VOICE_API_KEY_REF || undefined,
 		});

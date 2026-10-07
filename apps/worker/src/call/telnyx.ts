@@ -56,6 +56,54 @@ const SILENCE_BEFORE_DONE_MS = 45_000;
  */
 const ASSISTANT_PREFIX = 'dispatch-';
 
+/**
+ * Telephony, transcription and interruption settings.
+ *
+ * These are lifted from a production healthcare assistant on the same Telnyx
+ * account that handles real patient calls. Defaults left unset meant background
+ * noise was transcribed as the caller speaking, which derailed conversations and
+ * triggered spurious hangups. Proven values beat anything guessed here.
+ */
+const TELEPHONY_SETTINGS = {
+	noise_suppression: 'aicoustics',
+	noise_suppression_config: {
+		attenuation_limit: 100,
+		family: 'quail',
+		size: 'vf_2_0_l',
+		enhancement_level: 0.8,
+	},
+	time_limit_secs: 1200,
+	// Someone on hold is not an idle caller. Both of these are long on purpose.
+	user_idle_timeout_secs: 900,
+	user_idle_reply_secs: 20,
+} as const;
+
+const TRANSCRIPTION_SETTINGS = {
+	model: 'deepgram/flux',
+	language: 'en',
+	settings: {
+		// End-of-turn confidence. Raising this is what stops a cough or a TV in
+		// the background from being treated as the caller finishing a sentence.
+		eot_threshold: 0.8,
+		eot_timeout_ms: 2000,
+		eager_eot_threshold: 0.5,
+	},
+} as const;
+
+const INTERRUPTION_SETTINGS = {
+	enable: true,
+	disable_greeting_interruption: false,
+	start_speaking_plan: {
+		wait_seconds: 0.1,
+		transcription_endpointing_plan: {
+			on_punctuation_seconds: 0.1,
+			on_no_punctuation_seconds: 0.1,
+			on_number_seconds: 0.1,
+		},
+	},
+	interrupt_prediction_threshold: 0.0,
+} as const;
+
 export interface TelnyxConfig {
 	apiKey: string;
 	/**
@@ -68,6 +116,8 @@ export interface TelnyxConfig {
 	fromNumber: string;
 	/** Model the assistant speaks with. */
 	model?: string;
+	/** Telnyx integration secret holding the key for `model`, when it needs one. */
+	modelApiKeyRef?: string;
 	/**
 	 * Voice id, e.g. `Telnyx.KokoroTTS.af_heart` or
 	 * `elevenlabs.eleven_turbo_v2_5.<voice_id>`. The Kokoro ids need a speaker
@@ -202,7 +252,13 @@ losing the thing you called for.${context}`;
 			method: 'POST',
 			body: JSON.stringify({
 				name: `${ASSISTANT_PREFIX}${Date.now()}`,
-				model: this.cfg.model ?? 'openai/gpt-4o',
+				// Haiku: fast enough that turn latency stays conversational, which
+				// matters more on a phone call than raw reasoning depth.
+				model: this.cfg.model ?? 'anthropic/claude-haiku-4-5',
+				...(this.cfg.modelApiKeyRef ? { llm_api_key_ref: this.cfg.modelApiKeyRef } : {}),
+				telephony_settings: TELEPHONY_SETTINGS,
+				transcription: TRANSCRIPTION_SETTINGS,
+				interruption_settings: INTERRUPTION_SETTINGS,
 				instructions: this.instructionsFor(brief),
 				greeting: 'Hello, I am an AI assistant calling on behalf of a customer.',
 				// REPORTED from the Telnyx assistant schema: voice lives under
