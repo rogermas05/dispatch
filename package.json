@@ -15,7 +15,9 @@
     "worker": "npm run worker -w @token-origins/worker",
     "verify:receipt": "node scripts/verify-seller-receipt.mjs",
     "feed:emit": "node --experimental-strip-types scripts/emit-feed.mjs",
-    "imessage": "npm run imessage -w @token-origins/imessage"
+    "imessage": "npm run imessage -w @token-origins/imessage",
+    "imessage:dev": "npm run dev -w @token-origins/imessage",
+    "imessage:sim": "npm run sim -w @token-origins/imessage"
   },
   "repository": {
     "type": "git",

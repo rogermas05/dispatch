@@ -1,7 +1,6 @@
-import { createHash } from 'node:crypto';
 import { createServer } from 'node:http';
 import { fileURLToPath } from 'node:url';
-import { BlueBubbles, parseInbound, type InboundMessage } from './bluebubbles.js';
+import { BlueBubbles, parseInbound, webhookPath, type InboundMessage } from './bluebubbles.js';
 import { respond, type Conversation } from './agent.js';
 import { selectProvider } from '../../worker/src/call/select.ts';
 import { Ledger } from './ledger.js';
@@ -20,12 +19,7 @@ const PORT = Number(process.env.IMESSAGE_BOT_PORT ?? 8787);
 const BB_URL = process.env.BLUEBUBBLES_URL ?? 'http://localhost:1234';
 const BB_PASSWORD = process.env.BLUEBUBBLES_PASSWORD ?? '';
 
-/**
- * Inbound messages are trusted for who sent them, and with payments on this
- * server is reachable from the internet (Stripe has to post to it). So the
- * BlueBubbles webhook lives at a path only BlueBubbles is told.
- */
-const BB_WEBHOOK_PATH = `/webhook/${createHash('sha256').update(`dispatch-webhook:${BB_PASSWORD}`).digest('hex').slice(0, 32)}`;
+const BB_WEBHOOK_PATH = webhookPath(BB_PASSWORD);
 
 const bb = new BlueBubbles(BB_URL, BB_PASSWORD);
 const provider = selectProvider();

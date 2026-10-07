@@ -73,8 +73,8 @@ export interface Billing {
 	/** Take a call's quoted price. False when the balance does not cover it. */
 	charge(jobKey: string, amountCents: number): boolean;
 	refund(jobKey: string): void;
-	/** Text a fresh payment link, in its own bubble. */
-	sendTopUpLink(): Promise<void>;
+	/** Text a fresh payment link, in its own bubble, for at least `minCents` when the usual top-up would fall short. */
+	sendTopUpLink(minCents?: number): Promise<void>;
 }
 
 export interface PaymentsDeps {
@@ -98,11 +98,11 @@ export class Payments {
 			refund: (jobKey) => {
 				ledger.refund(handle, jobKey);
 			},
-			sendTopUpLink: async () => {
+			sendTopUpLink: async (minCents = 0) => {
 				const url = await stripe.createCheckoutUrl({
 					handle,
 					chatGuid,
-					amountCents: this.cfg.topUpCents,
+					amountCents: Math.max(this.cfg.topUpCents, minCents),
 					successUrl: `${this.cfg.publicUrl}${PAID_PATH}`,
 					cancelUrl: `${this.cfg.publicUrl}${CANCELLED_PATH}`,
 				});
