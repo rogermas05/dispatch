@@ -35,6 +35,15 @@ const POLL_INTERVAL_MS = 5_000;
 const RING_TIMEOUT_MS = 90_000;
 /** Teardown is what the other party hears as the line dying. Never rush it. */
 const CLEANUP_GRACE_MS = 10_000;
+/**
+ * How long the line must be silent before we conclude the call ended.
+ *
+ * This was two polls — about ten seconds — which is shorter than a person
+ * listening to a greeting before replying, so a normal pause was read as a
+ * finished call and the assistant was torn down mid-sentence. Silence is weak
+ * evidence; the hangup tool below is the strong one.
+ */
+const SILENCE_BEFORE_DONE_MS = 45_000;
 
 /**
  * Every assistant Dispatch creates carries this prefix, and Dispatch refuses to
@@ -84,7 +93,14 @@ interface TelnyxMessage {
 interface TelnyxConversation {
 	id: string;
 	created_at?: string;
-	metadata?: { assistant_id?: string; to?: string; from?: string; call_leg_id?: string };
+	metadata?: {
+		assistant_id?: string;
+		to?: string;
+		from?: string;
+		call_leg_id?: string;
+		/** Includes "hangup" once the agent has ended the call. */
+		called_tools?: string[];
+	};
 }
 
 export class TelnyxCallProvider implements CallProvider {
@@ -242,6 +258,15 @@ HARD RULES
 		throw new ProviderError(`no TeXML application appeared for assistant ${assistantId} within 45s`, true);
 	}
 
+	/** Has the agent ended the call? The hangup tool appearing is unambiguous. */
+	private async hungUp(assistantId: string): Promise<boolean> {
+		const list = await this.api<{ data?: TelnyxConversation[] }>(
+			'/ai/conversations?page%5Bsize%5D=25',
+		).catch(() => ({ data: [] as TelnyxConversation[] }));
+		const convo = list.data?.find((c) => c.metadata?.assistant_id === assistantId);
+		return convo?.metadata?.called_tools?.includes('hangup') === true;
+	}
+
 	/** Remove the TeXML application Telnyx provisioned alongside our assistant. */
 	private async deleteOwnTexmlApp(assistantId: string): Promise<void> {
 		const expected = `ai-${assistantId}`;
@@ -286,11 +311,15 @@ HARD RULES
 		let deadline = ringDeadline;
 		let messages: TelnyxMessage[] = [];
 		let conversationId: string | null = null;
-		let stableFor = 0;
+		let lastChangeAt = Date.now();
 		let started = false;
 
 		while (Date.now() < deadline) {
 			await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+
+			// Definitive end signal: the agent called its hangup tool. Everything
+			// else here is inference.
+			if (conversationId && (await this.hungUp(assistantId))) break;
 
 			if (!conversationId) {
 				// The assistant id lives in metadata, not as a query filter — a
@@ -314,11 +343,14 @@ HARD RULES
 				deadline = Date.now() + maxDurationSeconds * 1000;
 			}
 
-			// Two consecutive quiet polls means the call is over. Telnyx does not
-			// hand us a terminal call state on this path, so settling is inferred.
-			stableFor = next.length === messages.length && next.length > 0 ? stableFor + 1 : 0;
+			// Sustained silence as a fallback end signal. Generous on purpose: a
+			// caller thinking, or sitting in a hold queue, is not a finished call.
+			if (next.length === messages.length && next.length > 0) {
+				if (Date.now() - lastChangeAt >= SILENCE_BEFORE_DONE_MS) break;
+			} else {
+				lastChangeAt = Date.now();
+			}
 			messages = next;
-			if (stableFor >= 2) break;
 		}
 
 		const timedOut = started && Date.now() >= deadline;
