@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Dispatch — Let it make the call</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Mona+Sans:wdth,wght@75..125,200..900&family=Martian+Mono:wdth,wght@75..112.5,200..600&display=block" rel="stylesheet" />
+<link rel="stylesheet" href="deck.css" />
+</head>
+<body>
+<div id="stage">
+	<canvas id="bg"></canvas>
+
+	<!-- Persistent chrome: the deck is one phone call -->
+	<header class="chrome">
+		<div class="chrome__brand"><span class="dot"></span>DISPATCH</div>
+		<div class="chrome__status" id="status">● DIALING</div>
+	</header>
+
+	<section data-slide="1" data-voice="us" data-status="● DIALING">
+		<div class="s1-meta mono" data-in="0.2">TOKEN2049 Origins&nbsp;&nbsp;·&nbsp;&nbsp;Cardano track</div>
+		<h1 class="s1-title" data-in="0.5">Let it make<br/>the call.</h1>
+		<p class="s1-sub" data-in="1.1">Dispatch is a voice agent that makes phone calls for people and for other AI agents, paid per call through escrow on Cardano.</p>
+		<div class="s1-team mono" data-in="1.6">Roger Mas&nbsp;&nbsp;/&nbsp;&nbsp;Aman Shah</div>
+	</section>
+
+	<section data-slide="2" data-voice="none" data-status="● ON HOLD">
+		<div class="s2-clock" id="holdclock" data-in="0.2">01:58:42</div>
+		<h2 class="s2-line" data-in="0.9">Two hours on hold<br/><em>to ask one question.</em></h2>
+		<p class="s2-sub" data-in="1.5">And the voice on the other end is more and more often <span class="them">a company's bot</span>, built to keep you waiting.</p>
+	</section>
+
+	<section data-slide="3" data-voice="none" data-status="● NO ROUTE">
+		<h2 class="s4-title" data-in="0.2">AI agents can't<br/>make phone calls.</h2>
+		<p class="s4-sub" data-in="0.6">They have no number and no voice, so any task that needs someone on the phone gets handed back to a person.</p>
+		<div class="s4-tracks">
+			<div class="track" data-in="0.9">
+				<div class="track__name mono">Support agent</div>
+				<div class="track__steps"><span>read ticket</span><span>check order</span><span>draft reply</span></div>
+				<div class="track__wall mono">call the vendor</div>
+			</div>
+			<div class="track" data-in="1.15">
+				<div class="track__name mono">Claims agent</div>
+				<div class="track__steps"><span>parse denial</span><span>match policy</span><span>build appeal</span></div>
+				<div class="track__wall mono">ask the carrier why</div>
+			</div>
+			<div class="track" data-in="1.4">
+				<div class="track__name mono">Logistics agent</div>
+				<div class="track__steps"><span>reconcile</span><span>flag shortfall</span><span>log incident</span></div>
+				<div class="track__wall mono">phone the depot</div>
+			</div>
+		</div>
+	</section>
+
+	<section data-slide="4" data-voice="both" data-status="● CONNECTED">
+		<div class="s5-labels mono" data-in="0.3"><span class="them">Their agent</span><span class="us">Your agent</span></div>
+		<h2 class="s5-title" data-in="0.6">Send <span class="us">yours.</span></h2>
+		<p class="s5-sub" data-in="1.1">Tell Dispatch who to call, what you need to find out and what it may agree to.<br/>It makes the call and sends back the recording, the transcript and the answer.</p>
+	</section>
+
+	<section data-slide="5" data-voice="us" data-status="● LIVE">
+		<div class="s7-frame" id="demo" data-in="0.3"><video class="s7-video" src="media/demo.mp4" poster="media/demo-poster.jpg" playsinline preload="metadata"></video><div class="s7-play"><svg viewBox="0 0 40 40"><path d="M14 10 L31 20 L14 30 Z"/></svg></div></div>
+		<a class="s7-link mono" href="https://youtu.be/5phprFxXW1w" target="_blank" rel="noopener" data-in="0.6">youtu.be/5phprFxXW1w</a>
+	</section>
+
+	<section data-slide="6" data-voice="us" data-status="● CONNECTED">
+		<h2 class="s8-title" data-in="0.2">Text it, <span class="dim">or</span> <span class="us">call it.</span></h2>
+		<div class="s8-cols">
+			<div class="s8-col" data-in="0.5">
+				<div class="s8-head mono">People, over iMessage</div>
+				<div class="bubbles">
+					<div class="b b--me" data-in="0.8">call +1 630 770 8220 and ask if they're open today</div>
+					<div class="b b--bot" data-in="1.1">That one's $0.80. Tap the link to add funds and I'll make the call.</div>
+					<div class="b b--pay" data-in="1.35"><span> Pay</span>$5.00 · Dispatch balance</div>
+					<div class="b b--bot" data-in="1.6">You're funded. Calling now.</div>
+					<div class="b b--bot" data-in="1.9">they said they're not open today.</div>
+				</div>
+				<p class="s8-note" data-in="2.1">Nothing to install and no account. They pay with Apple Pay and get refunded if the call fails.</p>
+			</div>
+			<div class="s8-col" data-in="0.8">
+				<div class="s8-head mono">Agents, over the Masumi API</div>
+				<pre class="code mono" data-in="1.1"><span class="c">// any agent on Sokosumi, mid-task</span>
+<span class="k">POST</span> /start_job
+{ <span class="s">"to"</span>: <span class="s">"+1 630 770 8220"</span>,
+  <span class="s">"objective"</span>: <span class="s">"why was claim 7781 denied?"</span>,
+  <span class="s">"authorization"</span>: <span class="s">"ask only"</span> }
+
+<span class="c">→ quote</span>        <span class="us">1 tUSDM</span>
+<span class="c">→ escrow</span>       <span class="us">locked on Cardano</span>
+<span class="c">→ GET /status</span>  <span class="us">completed, transcript, outcome</span></pre>
+				<p class="s8-note" data-in="2.1">The phone call becomes one more tool the agent can use, paid from its wallet.</p>
+			</div>
+		</div>
+	</section>
+
+	<section data-slide="7" data-voice="us" data-status="● ESCROW LOCKED">
+		<h2 class="s9-title" data-in="0.2">Paid only if<br/>it <span class="us">happens.</span></h2>
+		<ol class="s9-rail">
+			<li data-in="0.6"><i></i><b>Quote</b><span>Priced by how long the call should take</span></li>
+			<li data-in="0.85"><i></i><b>Lock</b><span>The money sits in Masumi escrow before the phone rings</span></li>
+			<li data-in="1.1"><i></i><b>Call</b><span>Dispatch makes the call and reports back</span></li>
+			<li data-in="1.35"><i></i><b>Prove</b><span>Hashes of the brief and the result go on Cardano</span></li>
+			<li data-in="1.6"><i></i><b>Release</b><span>The seller is paid after the dispute window, or the buyer is refunded</span></li>
+		</ol>
+		<div class="s9-proof" data-in="2.0">
+			<p>On 7 October a program hired Dispatch through its public API. The call took 58 seconds and 1 tUSDM went through escrow.</p>
+			<table class="mono">
+				<tr><td>Registered</td><td>block 5,263,201</td><td>3ec929b5…09b544</td></tr>
+				<tr><td>Result hash</td><td>block 5,263,450</td><td>ad8dd99a…8adda7</td></tr>
+				<tr><td>Paid out</td><td>block 5,263,500</td><td>2c499142…966c83</td></tr>
+			</table>
+		</div>
+	</section>
+
+	<section data-slide="8" data-voice="both" data-status="● VERIFYING">
+		<h2 class="s10-title" data-in="0.2">Change one<br/>character.</h2>
+		<div class="s10-transcript" data-in="0.5">
+			<div class="tline"><time class="mono">00:00</time><b class="us">DISPATCH</b>Hello, I am an AI assistant calling on behalf of a customer.</div>
+			<div class="tline"><time class="mono">00:07</time><b class="them">THEM</b>Cool.</div>
+			<div class="tline"><time class="mono">00:09</time><b class="us">DISPATCH</b>I'm Dispatch calling to confirm a paid test booking.</div>
+			<div class="tline"><time class="mono">00:17</time><b class="them">THEM</b><span>Yeah. Sure. I'm <span class="swap"><span class="swap__a">t</span><span class="swap__b">w</span></span>alking right now.</span></div>
+			<div class="tline"><time class="mono">00:19</time><b class="us">DISPATCH</b>Thank you for that. Have a great day! Goodbye.</div>
+		</div>
+		<div class="s10-hashes mono">
+			<div class="hash" data-in="1.0"><span>SHA-256 of the call</span><code id="h-orig">…</code></div>
+			<div class="hash hash--bad" data-in="2.2"><span>With one letter changed</span><code id="h-alt">…</code><em>✕ Does not match</em></div>
+		</div>
+		<p class="s10-foot" data-in="2.6">Every paid call puts two fingerprints on Cardano, one of the brief and one of the result. If anyone edits the transcript afterwards, it stops matching.</p>
+	</section>
+
+	<section data-slide="9" data-voice="us" data-status="CALL ENDED · OBJECTIVE MET">
+		<h1 class="s12-title" data-in="0.3">Next time you're<br/>put on hold,<br/><span class="us">send Dispatch.</span></h1>
+		<div class="s12-meta mono" data-in="1.2">
+			<span>github.com/rogermas05/dispatch</span>
+			<span>On Sokosumi, paid through Masumi</span>
+			<span>Roger Mas / Aman Shah</span>
+		</div>
+	</section>
+</div>
+<script src="deck.js"></script>
+</body>
+</html>

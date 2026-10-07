@@ -1,0 +1,12 @@
+{
+  "name": "dispatch-deck",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "dependencies": {
+    "pptxgenjs": "^4.0.1",
+    "puppeteer-core": "^24.43.1"
+  }
+}
