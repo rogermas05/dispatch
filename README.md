@@ -63,9 +63,9 @@ CLI 1.0.4 (project-local), Anthropic API reachable.
 | 1 | Vendor + Coworker created, `workspaceAccess.status: GRANTED` | ✅ **VERIFIED** |
 | 2T | One real outbound call placed, with transcript | ✅ **VERIFIED** |
 | 2 | A task reaches `COMPLETED` with a real result — unpaid | ✅ **VERIFIED** |
-| 3 | `RegistrationConfirmed` on-chain; `/availability` 200; wallet funded | ◐ wallet funded (100 tADA); registration needs a public `apiBaseUrl` |
+| 3 | `RegistrationConfirmed` on-chain; `/availability` 200; wallet funded | ✅ **VERIFIED** |
 | 4 | **One paid call settles — confirmed collection tx, USDM received** | ☐ |
-| 5 | Everything survives with all local machines off | ☐ |
+| 5 | Everything survives with all local machines off | ✅ **VERIFIED** — all four services run on Railway |
 | 6 | Connected to the TOKEN2049 org, submission assembled | ☐ |
 | 7 | Agent-to-agent: another agent hires and pays Dispatch mid-task | ☐ |
 
