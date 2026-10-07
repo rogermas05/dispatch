@@ -92,6 +92,28 @@ npm run smoke -w @token-origins/agent-api   # full paid MIP-003 path over HTTP, 
 docker build -t dispatch .
 ```
 
+## Never redeploy while a job is in flight
+
+A deploy restarts the process. Jobs live in `JOBS_DIR`, which is a persistent
+volume in production — but a restart mid-job still drops whatever the runner was
+doing, and if the volume is missing the job is gone outright.
+
+That is not hypothetical. A paid job was lost exactly this way: the escrow was
+funded, the call connected and ran eight turns, and a redeploy seconds later
+turned it into `unknown job_id`. The buyer's funds sat locked until the deadline
+passed and refunded. The build plan's loudest warning is "the node must be alive
+when `unlockTime` passes" — a node that is alive but has forgotten the job fails
+the same way.
+
+Before deploying:
+
+```bash
+curl -s https://<agent-api>/jobs -H "authorization: Bearer $AGENT_API_TOKEN"
+```
+
+If anything is `awaiting_payment` or `running`, wait. A job takes minutes; a
+deploy can wait minutes.
+
 ## After deploying — from URL to "another agent hired us"
 
 1. **Agent API is reachable.** `GET https://<agent-api>/input_schema` returns the
