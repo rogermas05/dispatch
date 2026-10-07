@@ -8,6 +8,7 @@ import { Panel } from "./components/Panel.tsx";
 import { PlaybackBar } from "./components/PlaybackBar.tsx";
 import { OutcomePanel } from "./components/OutcomePanel.tsx";
 import { ProofPanel } from "./components/ProofPanel.tsx";
+import { HireDispatch } from "./components/HireDispatch.tsx";
 import { ReceiptsFeed } from "./components/ReceiptsFeed.tsx";
 import { StatTiles } from "./components/StatTiles.tsx";
 import { TranscriptPanel } from "./components/TranscriptPanel.tsx";
@@ -51,6 +52,9 @@ function Dashboard({ feed }: { feed: Feed }) {
         <OutcomePanel feed={feed} snapshot={snapshot} />
         <ProofPanel feed={feed} snapshot={snapshot} />
         <ReceiptsFeed feed={feed} snapshot={snapshot} />
+      </div>
+      <div className="grid gap-3">
+        <HireDispatch />
       </div>
       <div className="sticky bottom-3"><PlaybackBar feed={feed} playback={playback} /></div>
     </div>
