@@ -2,6 +2,8 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { randomUUID } from 'node:crypto';
 import { masumiInputHash, isValidPurchaserIdentifier } from './hash.js';
 import { availability, type HealthDeps } from './health.js';
+import { llmsTxt, openApiSpec } from './discovery.js';
+import { beginPublicCall, publicCallStatus, validatePublicCall } from './public-call.js';
 import type { CallBrief } from '../../worker/src/lib/types.js';
 import { INPUT_SCHEMA, parseCallInput, type CallPolicy, type JobPlan } from './input.js';
 import type { EscrowTerms } from './payment.js';
@@ -202,11 +204,53 @@ function rateLimiter(limit: number, windowMs = 60_000) {
  * @param operatorToken protects operator-only routes (/jobs). Buyer routes stay
  *   public: Masumi and Sokosumi buyers never hold our credentials.
  */
+/** Prefer the host the caller reached us on, so published URLs are reachable. */
+function publicBaseUrl(req: IncomingMessage): string {
+	const envUrl = process.env.AGENT_API_PUBLIC_URL?.replace(/\/$/, '');
+	if (envUrl) return envUrl;
+	const proto = (req.headers['x-forwarded-proto'] as string) ?? 'https';
+	return `${proto}://${req.headers.host ?? 'localhost'}`;
+}
+
+function publicDeps(api: AgentApi) {
+	return {
+		startJob: (body: Record<string, unknown>) => api.startJob(body),
+		status: (id: string | null) => api.status(id),
+		paymentServiceUrl: process.env.PAYMENT_SERVICE_URL,
+		buyKey: process.env.MPS_BUY_KEY,
+	};
+}
+
 export function createAgentApiServer(api: AgentApi, operatorToken?: string) {
 	const allowStart = rateLimiter(START_JOB_LIMIT_PER_MINUTE);
 	return createServer(async (req, res) => {
 		const url = new URL(req.url ?? '/', `http://${req.headers.host ?? 'localhost'}`);
 		try {
+			// Discovery: readable instructions, and a spec an assistant can act on.
+			// Both are public — an agent cannot decide to hire Dispatch if it needs
+			// a credential just to find out what Dispatch is.
+			if (req.method === 'GET' && (url.pathname === '/llms.txt' || url.pathname === '/.well-known/llms.txt')) {
+				const body = llmsTxt(publicBaseUrl(req));
+				res.writeHead(200, { 'content-type': 'text/plain; charset=utf-8', 'content-length': Buffer.byteLength(body) });
+				return res.end(body);
+			}
+			if (req.method === 'GET' && url.pathname === '/openapi.json') {
+				return send(res, 200, openApiSpec(publicBaseUrl(req)));
+			}
+
+			// One-shot call surface for assistants that cannot drive an escrow.
+			if (req.method === 'POST' && url.pathname === '/v1/call') {
+				const parsed = validatePublicCall(await readJson(req));
+				if (!parsed.ok) return send(res, 400, { error: 'invalid request', details: parsed.errors });
+				const { code, payload } = await beginPublicCall(parsed.req, publicDeps(api));
+				return send(res, code, payload);
+			}
+			if (req.method === 'GET' && url.pathname.startsWith('/v1/call/')) {
+				const id = decodeURIComponent(url.pathname.slice('/v1/call/'.length));
+				const { code, payload } = publicCallStatus(id, publicDeps(api));
+				return send(res, code, payload);
+			}
+
 			if (req.method === 'GET' && url.pathname === '/availability') return send(res, 200, await api.availability());
 			if (req.method === 'GET' && url.pathname === '/input_schema') return send(res, 200, INPUT_SCHEMA);
 			if (req.method === 'GET' && url.pathname === '/status') {
