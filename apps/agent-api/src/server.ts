@@ -51,6 +51,9 @@ export class AgentApi {
 			sellerVKey: this.deps.sellerVKey(),
 			identifierFromPurchaser: job.identifierFromPurchaser,
 			input_hash: job.inputHash,
+			// The quoted price. A buyer locking the wrong amount gets a datum
+			// mismatch, so this is not optional information.
+			...(job.requestedFunds ? { RequestedFunds: job.requestedFunds } : {}),
 			...this.deps.paymentSource(),
 		};
 	}

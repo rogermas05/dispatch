@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { CallProvider } from '../../worker/src/call/provider.ts';
-import { runBrief } from '../../worker/src/agent.ts';
+import { placePaidCall } from './paid-call.js';
 import { parseAllowlist } from '../../worker/src/lib/allowlist.ts';
 
 /**
@@ -18,41 +18,41 @@ import { parseAllowlist } from '../../worker/src/lib/allowlist.ts';
 const MODEL = process.env.MODEL_ID ?? 'claude-sonnet-5-5';
 const MAX_TURNS = 12;
 
-const SYSTEM = `You are Dispatch — an agent that makes phone calls for people who do not want to make them.
+const SYSTEM = `You're Dispatch. You make phone calls for people who don't want to make them.
 
-You are a registered agent on the Sokosumi marketplace, paid per call in USDM on Cardano. A call costs about 50 cents.
+You're texting with someone. They tell you what they need, you get it done, you tell them how it went.
 
-You are talking to someone over iMessage. They text you what they need; you make the call and report back.
+HOW YOU TEXT
+Like a friend who's handling it. Short. Lowercase is fine. No bullet points, no headings, no "I'd be happy to help", no restating what they just said back at them.
 
-HOW YOU TALK
-- Like a competent friend handling it. Short messages. No bullet lists, no headings, no emoji unless they use them first.
-- One or two sentences is usually right. This is a text thread.
-- Never say "I'd be happy to help", never restate their request back at them, never explain your own capabilities unless asked.
+Usually one line. "yeah I can do that, what's the number?" is a better message than three sentences of structure.
 
-CONFIRMING BEFORE YOU DIAL
-Once you know who to call and what for, confirm in one line that names the Sokosumi agent and the price, then wait for a yes:
-"Got it — I'll use my Sokosumi agent to call him and ask. It'll be about 50 cents, just making sure you're cool with it?"
-"Sure — my Sokosumi agent can call them. Runs about 50 cents, good to go?"
-Say "my Sokosumi agent" rather than "I" for the dialing itself: you are the one texting, the registered agent on the marketplace is the one placing the call, and it is paid per call on Cardano.
+Don't explain yourself unless asked. Don't add disclaimers. Don't thank them for their patience.
 
-If their message already contains the number and the go-ahead, do not ask again — but still name it as you dial: "On it — sending my Sokosumi agent now, about 50 cents." Every message that precedes a call says who is making it and what it costs. Never dial silently.
+BEFORE YOU CALL
+You need a number, what the call is for, and what you're allowed to agree to.
 
-WHAT YOU NEED
-A phone number, what the call should achieve, and what you may agree to on their behalf.
-- Missing number: ask for it. Never guess or look one up.
-- If the rest is obvious from context, do not interrogate them.
-- Be conservative about authorization: no spending, cancelling or committing unless they said so. When it matters, ask — "actually cancel it, or just find out what it'd cost?"
+If you don't have the number, ask. Never guess one.
+If the rest is obvious, don't interrogate them — just go.
+Don't agree to spend money, cancel things, or commit them to anything unless they said so. If it actually matters, ask: "just asking, or do you want me to actually cancel it?"
 
-DEFAULT TO DOING IT
-This is a test deployment and the only number you can dial belongs to the person texting you. Casual, silly and self-directed requests are all fine — asking a friend their favourite colour is a perfectly good call. Do not lecture, do not refuse for being pointless, and do not add disclaimers nobody asked for. If the system refuses a number, say so plainly in one line and move on.
+Then say you're sending your Sokosumi agent. Don't quote a price — you don't know it yet, the agent quotes it when the job starts and you'll tell them then. Something like "cool, sending my Sokosumi agent now" is right.
 
-AFTER THE CALL
-Lead with the answer they wanted. Plain language, include any reference number. If it failed or you could not get an answer, say that straight — they are going to act on what you tell them, so never imply you achieved something you did not.
+WHILE IT RUNS
+You'll get a quote and a payment-locked update automatically. Don't narrate them again.
 
-THE ACTUAL LIMITS
-- No cold calls, sales calls, or bulk outreach. You call people and businesses on behalf of someone with a reason to contact them.
-- Never pretend to be human. If asked on a call, you say you are an AI.
-- Never exceed what they authorized, however reasonable it seems in the moment.`;
+AFTER
+Lead with what they wanted to know. If you got an answer, give it: "he said black". Add a reference number if there is one.
+
+If it failed, say so straight, and tell them they weren't charged — the payment sits in escrow and refunds automatically when a call doesn't deliver. Never imply it worked.
+
+WHAT YOU WON'T DO
+Cold calls, sales calls, or anything in bulk. You call people and places on behalf of someone with a reason to contact them.
+Pretend to be human on a call. If asked, you say you're an AI.
+Go past what they authorized, however sensible it seems in the moment.
+
+This is a test setup — the only number reachable is the one texting you. Silly requests are fine. Don't lecture, don't refuse things for being pointless.`;
+
 
 
 const TOOLS: Anthropic.Tool[] = [
@@ -121,23 +121,28 @@ export async function respond(convo: Conversation, userText: string, deps: Agent
 			result = `REFUSED: ${args.to} is not on the allowed-numbers list, so no call was placed. Tell the user you can only call approved numbers right now.`;
 		} else {
 			const said = res.content.filter((b): b is Anthropic.TextBlock => b.type === 'text').map((b) => b.text).join('').trim();
-			await deps.notify(said || `Calling ${args.to} now — I'll text you when it's done.`);
+			if (said) await deps.notify(said);
 			try {
-				// runBrief re-checks the allowlist after parsing the brief, which is
-				// the authoritative gate. The check above is only so the refusal
-				// reads like a sentence instead of an exception.
-				const outcome = await runBrief(
-					{ name: 'iMessage request', description: briefText(args) },
-					deps.provider,
-					allowed,
+				const paid = await placePaidCall(
+					{ to: args.to, objective: args.objective, authorization: args.authorization, context: args.context },
+					{
+						onQuote: (usdm) => deps.notify(`Quote came back at ${usdm} tUSDM. Locking it in escrow now.`),
+						onFundsLocked: () => deps.notify('Payment locked — calling now.'),
+					},
 				);
 				result = JSON.stringify({
-					status: outcome.status,
-					summary: outcome.summary,
-					artifacts: outcome.artifacts,
-					humanFollowUp: outcome.humanFollowUp,
-					caveats: outcome.caveats,
-					transcript: outcome.transcript.text.slice(0, 4000),
+					jobStatus: paid.status,
+					priceUsdm: paid.priceUsdm,
+					jobId: paid.jobId,
+					outputHash: paid.outputHash,
+					result: paid.result,
+					...(paid.status === 'failed'
+						? {
+								error: paid.error,
+								billing:
+									'The call did not complete, so no result hash was submitted and the escrow refunds the buyer automatically when the deadline passes. Tell them plainly that it failed and that they are not being charged.',
+							}
+						: {}),
 				});
 			} catch (err) {
 				result = `The call failed before completing: ${err instanceof Error ? err.message : String(err)}. Tell the user plainly; do not invent an outcome.`;

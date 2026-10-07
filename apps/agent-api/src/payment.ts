@@ -34,6 +34,12 @@ export interface PaymentConfig {
 /** Escrow terms as MPS returns them: Unix milliseconds, as strings. */
 export interface EscrowTerms {
 	blockchainIdentifier: string;
+	/**
+	 * What the buyer must lock. Without this a buyer cannot know what to pay:
+	 * pricing is registered as Dynamic on-chain, so the amount is quoted per job
+	 * and exists nowhere else.
+	 */
+	requestedFunds?: Array<{ unit: string; amount: string }>;
 	payByTime: string;
 	submitResultTime: string;
 	unlockTime: string;

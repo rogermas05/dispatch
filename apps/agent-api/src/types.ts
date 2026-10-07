@@ -49,6 +49,8 @@ export interface Job {
 	/** MIP-004 input hash: the on-chain commitment to what we were asked. */
 	inputHash: string;
 	blockchainIdentifier: string;
+	/** What the buyer must lock, quoted at job start and echoed by /start_job. */
+	requestedFunds?: Array<{ unit: string; amount: string }>;
 	payByTime: string;
 	submitResultTime: string;
 	unlockTime: string;

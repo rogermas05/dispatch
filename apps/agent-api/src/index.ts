@@ -51,7 +51,11 @@ const api = new AgentApi({
 			maxDurationSeconds: brief.maxDurationSeconds,
 			researchMinutes: plan.researchBudget > 0n && config.research ? config.research.timeoutMinutes : 0,
 		});
-		return payments.createPayment({ inputHash, identifierFromPurchaser, metadata: JSON.stringify({ jobId }) }, { price, windows });
+		const terms = await payments.createPayment(
+			{ inputHash, identifierFromPurchaser, metadata: JSON.stringify({ jobId }) },
+			{ price, windows },
+		);
+		return { ...terms, ...(price ? { requestedFunds: [price] } : {}) };
 	},
 	agentIdentifier: () => config.payment?.agentIdentifier ?? null,
 	sellerVKey: () => config.sellerVKey,
