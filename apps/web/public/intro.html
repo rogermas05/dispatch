@@ -1,0 +1,94 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>Dispatch — intro</title>
+<style>
+  /* Screen-record this fullscreen. Press R to replay, 1/2/3 to jump to a beat. */
+  :root { --ink:#f4f4f5; --muted:#8b8b94; --accent:#5eead4; --bg:#09090b; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { height:100%; background:var(--bg); overflow:hidden; }
+  body {
+    display:grid; place-items:center;
+    font-family:"SF Pro Display",-apple-system,BlinkMacSystemFont,Inter,system-ui,sans-serif;
+    color:var(--ink); -webkit-font-smoothing:antialiased;
+  }
+  .stage { position:relative; width:1280px; height:720px; display:grid; place-items:center; overflow:hidden; }
+
+  /* slow drifting glow so the frame is never completely static */
+  .glow {
+    position:absolute; width:900px; height:900px; border-radius:50%;
+    background:radial-gradient(circle, rgba(94,234,212,.10), transparent 62%);
+    filter:blur(42px); animation:drift 14s ease-in-out infinite;
+  }
+  @keyframes drift {
+    0%,100% { transform:translate(-14%,-10%) scale(1); }
+    50%     { transform:translate(14%,10%) scale(1.14); }
+  }
+
+  .beat { position:absolute; opacity:0; text-align:center; padding:0 72px; }
+
+  h1 { font-size:76px; line-height:1.06; font-weight:600; letter-spacing:-.035em; }
+  h1 .dim { color:var(--muted); }
+  .fix { font-size:92px; font-weight:650; letter-spacing:-.04em; }
+  .fix em { font-style:normal; color:var(--accent); }
+  .sub { margin-top:26px; font-size:23px; color:var(--muted); letter-spacing:-.01em; }
+
+  .mark { font-size:120px; font-weight:650; letter-spacing:-.05em; }
+  .tag { margin-top:20px; font-size:25px; color:var(--muted); letter-spacing:-.01em; }
+  .chips { margin-top:40px; display:flex; gap:10px; justify-content:center; }
+  .chip {
+    font-size:14px; color:var(--muted); border:1px solid #27272a;
+    border-radius:999px; padding:8px 16px; letter-spacing:.01em;
+  }
+
+  /* beat timing — total ~11s */
+  .b1 { animation:beat 3.6s .35s both; }
+  .b2 { animation:beat 3.4s 3.75s both; }
+  .b3 { animation:hold 4.2s 7.0s both; }
+  @keyframes beat {
+    0%   { opacity:0; transform:translateY(18px); filter:blur(7px); }
+    16%  { opacity:1; transform:translateY(0);    filter:blur(0); }
+    82%  { opacity:1; transform:translateY(0);    filter:blur(0); }
+    100% { opacity:0; transform:translateY(-14px);filter:blur(7px); }
+  }
+  @keyframes hold {
+    0%   { opacity:0; transform:translateY(20px) scale(.97); filter:blur(9px); }
+    18%  { opacity:1; transform:translateY(0) scale(1);      filter:blur(0); }
+    100% { opacity:1; transform:translateY(0) scale(1);      filter:blur(0); }
+  }
+  .chips .chip { animation:rise .6s both; }
+  .b3 .chip:nth-child(1){ animation-delay:8.1s } 
+  .b3 .chip:nth-child(2){ animation-delay:8.25s }
+  .b3 .chip:nth-child(3){ animation-delay:8.4s }
+  @keyframes rise { from { opacity:0; transform:translateY(10px) } to { opacity:1; transform:translateY(0) } }
+</style>
+
+<div class="stage" id="stage">
+  <div class="glow"></div>
+
+  <div class="beat b1">
+    <h1>Tired of making calls<br /><span class="dim">you don't want to make?</span></h1>
+  </div>
+
+  <div class="beat b2">
+    <div class="fix">We <em>fixed</em> that.</div>
+    <div class="sub">Text it. It calls. It tells you what they said.</div>
+  </div>
+
+  <div class="beat b3">
+    <div class="mark">Dispatch</div>
+    <div class="tag">A voice agent for people — and for other agents.</div>
+    <div class="chips">
+      <span class="chip">iMessage</span>
+      <span class="chip">ChatGPT</span>
+      <span class="chip">Paid per call on Cardano</span>
+    </div>
+  </div>
+</div>
+
+<script>
+  const stage = document.getElementById('stage');
+  const replay = () => { const c = stage.cloneNode(true); stage.replaceWith(c); };
+  addEventListener('keydown', (e) => {
+    if (e.key.toLowerCase() === 'r') location.reload();
+  });
+</script>
