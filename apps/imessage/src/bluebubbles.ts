@@ -6,7 +6,7 @@
  * iMessage; most "the bot stopped working" reports are the machine sleeping.
  */
 
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 
 export interface InboundMessage {
 	chatGuid: string;
@@ -60,6 +60,15 @@ export class BlueBubbles {
 		});
 		if (!res.ok) throw new Error(`webhook registration -> ${res.status}`);
 	}
+}
+
+/**
+ * Where BlueBubbles posts inbound messages. Inbound messages are trusted for who
+ * sent them, and with payments on, the bot is reachable from the internet
+ * (Stripe has to post to it), so the path is one only BlueBubbles is told.
+ */
+export function webhookPath(password: string): string {
+	return `/webhook/${createHash('sha256').update(`dispatch-webhook:${password}`).digest('hex').slice(0, 32)}`;
 }
 
 /** Pull the parts we care about out of a BlueBubbles webhook body. */

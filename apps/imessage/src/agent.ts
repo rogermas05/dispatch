@@ -171,7 +171,7 @@ export async function respond(convo: Conversation, userText: string, deps: Agent
 async function chargeAndRun(quote: Quote, billing: Billing, jobKey: string, notify: (text: string) => Promise<void>): Promise<string> {
 	const priceCents = centsForQuote(quote.priceUsdm);
 	if (!billing.charge(jobKey, priceCents)) {
-		await billing.sendTopUpLink();
+		await billing.sendTopUpLink(priceCents - billing.balanceCents());
 		return `NOT PLACED: this call costs ${dollars(priceCents)} and their balance is ${dollars(billing.balanceCents())}, so nothing was charged and no call was made. A payment link was just texted to them as its own message. Tell them in one line what it costs, to tap the link to add funds, and that you will make the call once it lands.`;
 	}
 	await notify(`${dollars(priceCents)}, taking it from your balance (${dollars(billing.balanceCents())} left)`);

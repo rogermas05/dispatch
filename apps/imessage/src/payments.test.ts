@@ -116,6 +116,14 @@ describe('Payments.billingFor', () => {
 		expect(createCheckoutUrl).toHaveBeenCalledWith({ handle: HANDLE, chatGuid: CHAT, amountCents: 500, successUrl: 'https://pay.test/paid', cancelUrl: 'https://pay.test/cancelled' });
 		expect(send).toHaveBeenCalledWith(CHAT, 'https://checkout.stripe.com/c/pay/cs_1');
 	});
+
+	it('raises the top-up to cover a call the usual amount would not', async () => {
+		const { createCheckoutUrl, payments } = setup();
+
+		await payments.billingFor(HANDLE, CHAT).sendTopUpLink(1234);
+
+		expect(createCheckoutUrl).toHaveBeenCalledWith(expect.objectContaining({ amountCents: 1234 }));
+	});
 });
 
 describe('loadPaymentsConfig', () => {
