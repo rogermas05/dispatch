@@ -9,6 +9,9 @@ import { PlaybackBar } from "./components/PlaybackBar.tsx";
 import { OutcomePanel } from "./components/OutcomePanel.tsx";
 import { ProofPanel } from "./components/ProofPanel.tsx";
 import { HireDispatch } from "./components/HireDispatch.tsx";
+import { WhoUsesIt } from "./components/WhoUsesIt.tsx";
+import { HowItWorks } from "./components/HowItWorks.tsx";
+import { WhyCardano } from "./components/WhyCardano.tsx";
 import { ReceiptsFeed } from "./components/ReceiptsFeed.tsx";
 import { StatTiles } from "./components/StatTiles.tsx";
 import { TranscriptPanel } from "./components/TranscriptPanel.tsx";
@@ -40,6 +43,7 @@ function Dashboard({ feed }: { feed: Feed }) {
     <div className="mx-auto flex min-h-full max-w-[1760px] flex-col gap-3 p-5">
       <Header feed={feed} />
       <StatTiles feed={feed} snapshot={snapshot} />
+      <WhoUsesIt />
       <Narration feed={feed} snapshot={snapshot} onPlay={playback.restart} />
       <div className="grid h-[460px] grid-cols-12 gap-3">
         <div className="col-span-3 flex min-h-0 min-w-0"><JobPipeline feed={feed} snapshot={snapshot} /></div>
@@ -53,6 +57,8 @@ function Dashboard({ feed }: { feed: Feed }) {
         <ProofPanel feed={feed} snapshot={snapshot} />
         <ReceiptsFeed feed={feed} snapshot={snapshot} />
       </div>
+      <HowItWorks />
+      <WhyCardano />
       <div className="grid gap-3">
         <HireDispatch />
       </div>
