@@ -26,6 +26,15 @@ import type { CallBrief, CallResult, CallStatus, Transcript } from '../lib/types
 
 const API = 'https://api.telnyx.com/v2';
 const POLL_INTERVAL_MS = 5_000;
+/**
+ * How long to wait for the first word before giving up on a call.
+ *
+ * Separate from the caller's duration budget, which is about how long a
+ * conversation may run, not how long a phone may ring.
+ */
+const RING_TIMEOUT_MS = 90_000;
+/** Teardown is what the other party hears as the line dying. Never rush it. */
+const CLEANUP_GRACE_MS = 10_000;
 
 /**
  * Every assistant Dispatch creates carries this prefix, and Dispatch refuses to
@@ -193,6 +202,10 @@ HARD RULES
 			});
 			return await this.awaitTranscript(assistantId, brief.maxDurationSeconds);
 		} finally {
+			// Grace period before teardown. Deleting the assistant is what the
+			// caller hears as the line going dead, so it must not race the last
+			// moments of a call that is still wrapping up.
+			await new Promise((r) => setTimeout(r, CLEANUP_GRACE_MS));
 			// Both records outlive the call, and the application outlives the
 			// assistant, so each is removed explicitly.
 			await this.deleteOwnAssistant(assistantId).catch(() => {});
@@ -262,10 +275,19 @@ HARD RULES
 
 	/** Poll until the conversation stops growing, or we hit the brief's ceiling. */
 	private async awaitTranscript(assistantId: string, maxDurationSeconds: number): Promise<CallResult> {
-		const deadline = Date.now() + maxDurationSeconds * 1000;
+		// The clock only starts once someone is actually talking.
+		//
+		// Previously the deadline ran from the moment we dialled, so a short
+		// max_duration plus a few rings meant the budget expired while the phone
+		// was still ringing. The caller's `finally` then deleted the assistant
+		// mid-call, and the person who picked up heard silence. Ringing, hold
+		// music and dead air are not the thing the caller was budgeting for.
+		const ringDeadline = Date.now() + RING_TIMEOUT_MS;
+		let deadline = ringDeadline;
 		let messages: TelnyxMessage[] = [];
 		let conversationId: string | null = null;
 		let stableFor = 0;
+		let started = false;
 
 		while (Date.now() < deadline) {
 			await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
@@ -286,6 +308,12 @@ HARD RULES
 			).catch(() => ({ data: messages }));
 			const next = page.data ?? [];
 
+			// First speech: now give the call its full budget.
+			if (!started && next.length > 0) {
+				started = true;
+				deadline = Date.now() + maxDurationSeconds * 1000;
+			}
+
 			// Two consecutive quiet polls means the call is over. Telnyx does not
 			// hand us a terminal call state on this path, so settling is inferred.
 			stableFor = next.length === messages.length && next.length > 0 ? stableFor + 1 : 0;
@@ -293,7 +321,7 @@ HARD RULES
 			if (stableFor >= 2) break;
 		}
 
-		const timedOut = Date.now() >= deadline;
+		const timedOut = started && Date.now() >= deadline;
 		const transcript = toTranscript(messages);
 		const status: CallStatus = messages.length === 0 ? 'unreachable' : timedOut ? 'timeout' : 'completed';
 

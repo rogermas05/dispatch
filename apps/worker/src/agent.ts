@@ -33,7 +33,16 @@ const briefSchema = z.object({
 		.union([z.record(z.string()), z.string(), z.null()])
 		.optional()
 		.transform((v) => (typeof v === 'string' ? (v.trim() ? { notes: v } : undefined) : (v ?? undefined))),
-	maxDurationSeconds: z.coerce.number().int().positive().max(1800).default(900),
+	// Floored at three minutes. The model will happily pick 60 for a "quick
+	// question", which is not enough once a phone tree and a hold queue are
+	// involved — and a budget that expires mid-call ends the call.
+	maxDurationSeconds: z.coerce
+		.number()
+		.int()
+		.positive()
+		.max(1800)
+		.default(900)
+		.transform((v) => Math.max(v, 180)),
 });
 
 const outcomeSchema = z.object({

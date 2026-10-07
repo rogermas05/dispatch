@@ -14,7 +14,8 @@
     "agent:api": "npm run agent:api -w @token-origins/agent-api",
     "worker": "npm run worker -w @token-origins/worker",
     "verify:receipt": "node scripts/verify-seller-receipt.mjs",
-    "feed:emit": "node --experimental-strip-types scripts/emit-feed.mjs"
+    "feed:emit": "node --experimental-strip-types scripts/emit-feed.mjs",
+    "imessage": "npm run imessage -w @token-origins/imessage"
   },
   "repository": {
     "type": "git",
