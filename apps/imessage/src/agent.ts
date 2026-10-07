@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import type { CallProvider } from '../../worker/src/call/provider.ts';
 import { quoteCall, payAndRun, type Quote } from './paid-call.js';
 import { parseAllowlist } from '../../worker/src/lib/allowlist.ts';
+import { centsForQuote, dollars, type Billing } from './payments.js';
 
 /**
  * The texting half of Dispatch.
@@ -87,6 +88,8 @@ export interface AgentDeps {
 	provider: CallProvider;
 	/** Sends an interim message while a call is running. */
 	notify: (text: string) => Promise<void>;
+	/** The sender's prepaid balance. Absent when payments are off and calls are free. */
+	billing?: Billing;
 }
 
 const allowed = parseAllowlist(process.env.DISPATCH_ALLOWED_NUMBERS);
@@ -122,6 +125,7 @@ export async function respond(convo: Conversation, userText: string, deps: Agent
 			// demo from an accidental robocall.
 			result = `REFUSED: ${args.to} is not on the allowed-numbers list, so nothing was quoted and no call was placed. Tell them you can only call approved numbers right now.`;
 		} else {
+			const billing = deps.billing;
 			const said = res.content.filter((b): b is Anthropic.TextBlock => b.type === 'text').map((b) => b.text).join('').trim();
 			if (said) await deps.notify(said);
 			try {
@@ -129,23 +133,11 @@ export async function respond(convo: Conversation, userText: string, deps: Agent
 				// a turn of friction for a price measured in cents; the number is
 				// still said out loud before any money moves.
 				const quote = await quoteCall(args);
-				if (quote.priceUsdm) await deps.notify(`${quote.priceUsdm} tUSDM — locking it in now.`);
-				const paid = await payAndRun(quote, { onFundsLocked: () => deps.notify('payment locked, calling now') });
-				result = JSON.stringify({
-					jobStatus: paid.status,
-					priceUsdm: paid.priceUsdm,
-					jobId: paid.jobId,
-					outputHash: paid.outputHash,
-					result: paid.result,
-					...(paid.status === 'failed'
-						? {
-								error: paid.error,
-								billing:
-									'The call did not complete, so no result hash was submitted and the escrow refunds automatically when the deadline passes. Tell them plainly that it failed and that they are not being charged.',
-							}
-						: {}),
-				});
+				result = billing
+					? await chargeAndRun(quote, billing, toolUse.id, deps.notify)
+					: await run(quote, deps.notify);
 			} catch (err) {
+				billing?.refund(toolUse.id);
 				result = `The call failed: ${err instanceof Error ? err.message : String(err)}. Tell them plainly, and that they are not charged for a call that did not happen.`;
 			}
 		}
@@ -156,6 +148,49 @@ export async function respond(convo: Conversation, userText: string, deps: Agent
 		});
 	}
 	return "Something went wrong on my end and I couldn't finish that. Try again?";
+}
+
+/**
+ * Take the quoted price from the sender's balance before escrow locks anything.
+ * Short balance: nothing is charged and they get a top-up link. A call that
+ * does not complete is refunded, matching the escrow refund we get back.
+ */
+async function chargeAndRun(quote: Quote, billing: Billing, jobKey: string, notify: (text: string) => Promise<void>): Promise<string> {
+	const priceCents = centsForQuote(quote.priceUsdm);
+	if (!billing.charge(jobKey, priceCents)) {
+		await billing.sendTopUpLink();
+		return `NOT PLACED: this call costs ${dollars(priceCents)} and their balance is ${dollars(billing.balanceCents())}, so nothing was charged and no call was made. A payment link was just texted to them as its own message. Tell them in one line what it costs, to tap the link to add funds, and that you will make the call once it lands.`;
+	}
+	await notify(`${dollars(priceCents)}, taking it from your balance (${dollars(billing.balanceCents())} left)`);
+	const result = await pay(quote, notify);
+	if (!result.completed) billing.refund(jobKey);
+	return result.text;
+}
+
+async function run(quote: Quote, notify: (text: string) => Promise<void>): Promise<string> {
+	if (quote.priceUsdm) await notify(`${quote.priceUsdm} tUSDM — locking it in now.`);
+	return (await pay(quote, notify)).text;
+}
+
+async function pay(quote: Quote, notify: (text: string) => Promise<void>): Promise<{ completed: boolean; text: string }> {
+	const paid = await payAndRun(quote, { onFundsLocked: () => notify('payment locked, calling now') });
+	return {
+		completed: paid.status === 'completed',
+		text: JSON.stringify({
+			jobStatus: paid.status,
+			priceUsdm: paid.priceUsdm,
+			jobId: paid.jobId,
+			outputHash: paid.outputHash,
+			result: paid.result,
+			...(paid.status === 'failed'
+				? {
+						error: paid.error,
+						billing:
+							'The call did not complete, so no result hash was submitted and the escrow refunds automatically when the deadline passes. Tell them plainly that it failed and that they are not being charged.',
+					}
+				: {}),
+		}),
+	};
 }
 
 /** The same brief shape the paid path parses, so one code path handles both. */
