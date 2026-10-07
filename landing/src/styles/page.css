@@ -1,0 +1,475 @@
+/* ── Nav ───────────────────────────────────────────────────────────────── */
+
+.nav {
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: 40;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: clamp(1.1rem, 2.4vw, 1.9rem) var(--gutter);
+  font-size: 0.92rem;
+  mix-blend-mode: difference;
+  opacity: 0;
+  transition: opacity 1.4s var(--ease-out) 1.1s;
+}
+
+.is-ready .nav {
+  opacity: 1;
+}
+
+.nav__name {
+  font-size: 1.15rem;
+  font-stretch: var(--display-stretch);
+  font-weight: 500;
+  letter-spacing: -0.03em;
+}
+
+/* ── Hero ──────────────────────────────────────────────────────────────── */
+
+.hero {
+  display: flex;
+  min-height: 100svh;
+  padding-block: clamp(6rem, 15vh, 10rem) clamp(2rem, 5vh, 3.5rem);
+}
+
+.hero__inner {
+  --out: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 3rem;
+}
+
+.hero__title {
+  font-size: clamp(2.5rem, 10.4vw, 11rem);
+  font-weight: var(--display-weight);
+  line-height: 0.92;
+  letter-spacing: -0.055em;
+  opacity: calc(1 - var(--out) * 1.15);
+  transform: translateY(calc(var(--out) * -9vh)) scale(calc(1 - var(--out) * 0.05));
+  transform-origin: left center;
+}
+
+/* Each line rises out of its own mask. The padding keeps descenders unclipped. */
+.line {
+  display: block;
+  overflow: hidden;
+  padding-bottom: 0.18em;
+  margin-bottom: -0.18em;
+}
+
+/* The letters also widen as they land: the variable font's width axis is animated. */
+.line__inner {
+  display: block;
+  font-stretch: 75%;
+  transform: translateY(118%);
+  transition:
+    transform 1.5s var(--ease-out) calc(var(--i) * 120ms + 150ms),
+    font-stretch 1.9s var(--ease-out) calc(var(--i) * 120ms + 250ms);
+  will-change: transform;
+}
+
+.is-ready .line__inner {
+  font-stretch: var(--display-stretch);
+  transform: none;
+}
+
+.hero__lede {
+  max-width: 34ch;
+  font-size: clamp(1.05rem, 1.5vw, 1.35rem);
+  line-height: 1.42;
+  color: var(--ink-2);
+  text-wrap: pretty;
+  opacity: 0;
+  transform: translateY(1.4rem);
+  transition:
+    opacity 1.4s var(--ease-out) 0.95s,
+    transform 1.6s var(--ease-out) 0.95s;
+}
+
+.is-ready .hero__lede {
+  opacity: calc(1 - var(--out) * 2);
+  transform: none;
+}
+
+/* ── The call ──────────────────────────────────────────────────────────── */
+
+.call {
+  --t: 0;
+  display: flex;
+  align-items: center;
+  min-height: 100svh;
+  padding-block: clamp(4.5rem, 10vh, 6rem);
+}
+
+/* A solid surface, so the transcript reads against the page and not the signal. */
+.player {
+  margin-top: clamp(1.8rem, 3.5vw, 3rem);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgb(7 9 10 / 0.9);
+}
+
+.player__bar {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: clamp(0.9rem, 2vw, 1.6rem);
+  padding: clamp(0.9rem, 1.6vw, 1.3rem) clamp(1rem, 2vw, 1.75rem);
+  border-bottom: 1px solid var(--line);
+}
+
+.player__toggle {
+  min-width: 4.2rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.95rem;
+  text-align: left;
+  cursor: pointer;
+  transition: color 0.3s;
+}
+
+.player__toggle:hover {
+  color: var(--dispatch);
+}
+
+.player__clock {
+  font-family: var(--mono);
+  font-size: 0.74rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-3);
+}
+
+/* Two stacked copies of the segments: a dim track, and a bright copy clipped to --t. */
+.timeline {
+  position: relative;
+  height: 2.4rem;
+  cursor: pointer;
+  touch-action: none;
+}
+
+.timeline__track,
+.timeline__played {
+  position: absolute;
+  inset: 0;
+}
+
+.timeline__track {
+  opacity: 0.22;
+}
+
+.timeline__played {
+  clip-path: inset(0 calc((1 - var(--t)) * 100%) 0 0);
+}
+
+.timeline i {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-right: 2px solid rgb(7 9 10);
+  border-radius: 3px;
+}
+
+.timeline .is-dispatch {
+  background: var(--dispatch);
+}
+
+.timeline .is-them {
+  background: var(--them);
+}
+
+.timeline__head {
+  position: absolute;
+  top: -0.35rem;
+  bottom: -0.35rem;
+  left: calc(var(--t) * 100%);
+  width: 2px;
+  margin-left: -1px;
+  background: var(--ink);
+}
+
+.lines {
+  padding-block: clamp(0.5rem, 1vw, 0.9rem);
+}
+
+.lines li {
+  opacity: 0.26;
+  transition: opacity 0.5s;
+}
+
+.lines li.is-said,
+.lines li.is-now {
+  opacity: 1;
+}
+
+.line-row {
+  --voice: var(--dispatch);
+  display: grid;
+  grid-template-columns: 3.4rem 5.4rem 1fr;
+  align-items: baseline;
+  gap: 0.4rem;
+  width: 100%;
+  padding: clamp(0.55rem, 1.05vw, 0.85rem) clamp(1rem, 2vw, 1.75rem);
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.line-row.is-them {
+  --voice: var(--them);
+}
+
+.line-row:hover {
+  background: rgb(244 241 234 / 0.045);
+}
+
+.line-row time {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-3);
+}
+
+.line-row__who {
+  font-size: 0.9rem;
+  color: var(--voice);
+}
+
+.line-row__text {
+  font-size: clamp(1.02rem, 1.45vw, 1.3rem);
+  line-height: 1.35;
+  letter-spacing: -0.015em;
+}
+
+/* The line being spoken carries its speaker's colour on the left edge. */
+.is-now .line-row {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--voice) 16%, transparent), transparent 60%);
+  box-shadow: inset 2px 0 0 var(--voice);
+}
+
+.call__after {
+  max-width: 62ch;
+  margin-top: clamp(1.2rem, 2.2vw, 1.8rem);
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+
+/* ── Proof ─────────────────────────────────────────────────────────────── */
+
+.proof {
+  display: flex;
+  align-items: center;
+  min-height: 100svh;
+}
+
+.lab {
+  --verdict: var(--dispatch);
+  margin-top: clamp(2rem, 4vw, 3.2rem);
+}
+
+.lab.is-tampered {
+  --verdict: var(--them);
+}
+
+.lab__label {
+  display: block;
+  margin-bottom: 0.8rem;
+  font-size: 0.9rem;
+  color: var(--ink-3);
+}
+
+.lab__input {
+  display: block;
+  width: 100%;
+  padding: 1rem 1.2rem;
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--verdict);
+  border-radius: 0 10px 10px 0;
+  background: rgb(7 9 10 / 0.9);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: clamp(0.72rem, 0.9vw, 0.82rem);
+  line-height: 1.8;
+  resize: none;
+  transition: border-color 0.4s;
+}
+
+.lab__input:focus {
+  outline: none;
+}
+
+.lab__hash {
+  display: block;
+  min-height: 2.5em;
+  margin-top: clamp(1.4rem, 2.6vw, 2.2rem);
+  font-family: var(--mono);
+  font-size: clamp(0.92rem, 2.35vw, 2.2rem);
+  font-weight: 300;
+  line-height: 1.25;
+  letter-spacing: -0.04em;
+  overflow-wrap: anywhere;
+}
+
+.lab__hash span {
+  transition:
+    color 0.7s,
+    text-shadow 0.7s;
+}
+
+.lab__hash .is-changed {
+  color: var(--them);
+  text-shadow: 0 0 22px rgb(255 138 82 / 0.55);
+}
+
+.lab__status {
+  margin-top: 0.8rem;
+  font-size: 0.92rem;
+  color: var(--verdict);
+  transition: color 0.4s;
+}
+
+.proof__links {
+  margin-top: clamp(1.6rem, 3vw, 2.4rem);
+  color: var(--ink-2);
+}
+
+/* ── Close ─────────────────────────────────────────────────────────────── */
+
+.final {
+  display: flex;
+  flex-direction: column;
+  min-height: 100svh;
+}
+
+.final__inner {
+  display: grid;
+  flex: 1;
+  place-content: center;
+  padding-block: 6rem;
+  text-align: center;
+}
+
+.final__title {
+  max-width: 7ch;
+  margin-inline: auto;
+  font-size: clamp(2.5rem, 8.6vw, 9rem);
+  font-stretch: var(--display-stretch);
+  font-weight: var(--display-weight);
+  line-height: 0.94;
+  letter-spacing: -0.055em;
+  text-shadow: 0 0 90px rgb(5 6 7 / 0.95);
+}
+
+.final__links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.6rem 2.4rem;
+  margin-top: clamp(2rem, 4vw, 3rem);
+  font-size: clamp(1rem, 1.4vw, 1.2rem);
+}
+
+/* A quiet fact sheet under the ring: small type, hairlines, nothing decorative. */
+.hire {
+  display: grid;
+  grid-template-columns: repeat(4, auto);
+  justify-content: space-between;
+  gap: 1rem 2.5rem;
+  margin-block: 0;
+  padding-block: 1.3rem;
+  border-top: 1px solid var(--line);
+  font-size: 0.84rem;
+}
+
+.hire dt {
+  margin-bottom: 0.25rem;
+  color: var(--ink-3);
+}
+
+.hire dd {
+  margin: 0;
+  color: var(--ink-2);
+}
+
+.hire code {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+}
+
+.hire .text-button {
+  margin-left: 0.5rem;
+  color: var(--ink-3);
+}
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.4rem 2rem;
+  padding-block: 1.6rem;
+  font-size: 0.84rem;
+  color: var(--ink-3);
+}
+
+@media (max-width: 1100px) {
+  .hire {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .hire {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .hire code {
+    overflow-wrap: anywhere;
+  }
+
+  /* The widest cut needs looser tracking at small sizes or the letters collide. */
+  .hero__title,
+  .final__title,
+  .display {
+    letter-spacing: -0.035em;
+  }
+
+  .player__bar {
+    grid-template-columns: auto 1fr;
+  }
+
+  .player__clock {
+    display: none;
+  }
+
+  .line-row {
+    grid-template-columns: 2.8rem 1fr;
+  }
+
+  .line-row__text {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero__title,
+  .line__inner,
+  .hero__lede {
+    transform: none;
+  }
+
+  .line__inner {
+    font-stretch: var(--display-stretch);
+  }
+
+  .hero__lede {
+    opacity: 1;
+  }
+}
