@@ -9,6 +9,9 @@ import { PlaybackBar } from "./components/PlaybackBar.tsx";
 import { OutcomePanel } from "./components/OutcomePanel.tsx";
 import { ProofPanel } from "./components/ProofPanel.tsx";
 import { HireDispatch } from "./components/HireDispatch.tsx";
+import { WhoHires } from "./components/WhoHires.tsx";
+import { EscrowExplainer } from "./components/EscrowExplainer.tsx";
+import { WhyCardano } from "./components/WhyCardano.tsx";
 import { ReceiptsFeed } from "./components/ReceiptsFeed.tsx";
 import { StatTiles } from "./components/StatTiles.tsx";
 import { TranscriptPanel } from "./components/TranscriptPanel.tsx";
@@ -52,6 +55,11 @@ function Dashboard({ feed }: { feed: Feed }) {
         <OutcomePanel feed={feed} snapshot={snapshot} />
         <ProofPanel feed={feed} snapshot={snapshot} />
         <ReceiptsFeed feed={feed} snapshot={snapshot} />
+      </div>
+      <div className="grid grid-cols-3 gap-3">
+        <WhoHires />
+        <EscrowExplainer />
+        <WhyCardano />
       </div>
       <div className="grid gap-3">
         <HireDispatch />
