@@ -13,19 +13,23 @@ export interface HealthDeps {
 	registrationConfirmed: () => Promise<boolean>;
 	modelHealthy: () => Promise<boolean>;
 	telephonyHealthy: () => Promise<boolean>;
+	/** The payment service is configured and reachable for creating escrows. Defaults to true. */
+	paymentServiceReady?: () => Promise<boolean>;
 }
 
 export async function availability(deps: HealthDeps): Promise<AvailabilityReport> {
-	const [registered, model, telephony] = await Promise.all([
+	const [registered, model, telephony, payments] = await Promise.all([
 		deps.registrationConfirmed().catch(() => false),
 		deps.modelHealthy().catch(() => false),
 		deps.telephonyHealthy().catch(() => false),
+		(deps.paymentServiceReady ?? (async () => true))().catch(() => false),
 	]);
 
 	const reasons: string[] = [];
 	if (!registered) reasons.push('agent is not RegistrationConfirmed on-chain');
 	if (!model) reasons.push('model provider unreachable');
 	if (!telephony) reasons.push('telephony provider unhealthy — calls cannot be placed');
+	if (!payments) reasons.push('payment service not configured or unreachable — escrow cannot be created');
 
 	return reasons.length === 0
 		? { status: 'available', type: 'masumi-agent' }

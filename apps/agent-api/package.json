@@ -6,12 +6,13 @@
   "scripts": {
     "agent:api": "tsx src/index.ts",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "smoke": "tsx scripts/smoke.ts"
   },
   "devDependencies": {
+    "@types/node": "^22.10.7",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3",
-    "vitest": "^3.0.5",
-    "@types/node": "^22.10.7"
+    "vitest": "^3.0.5"
   }
 }

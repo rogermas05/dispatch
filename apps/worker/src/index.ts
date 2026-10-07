@@ -3,8 +3,7 @@ import { join } from 'node:path';
 import { hostname } from 'node:os';
 import { Journal } from './lib/journal.js';
 import { SokosumiClient } from './lib/sokosumi.js';
-import { MockCallProvider } from './call/mock.js';
-import { TelnyxCallProvider } from './call/telnyx.js';
+import { selectProvider } from './call/select.js';
 import type { CallProvider } from './call/provider.js';
 import { runBrief } from './agent.js';
 
@@ -24,24 +23,6 @@ function required(name: string): string {
 	const v = process.env[name];
 	if (!v) throw new Error(`${name} is not set — copy .env.example to .env.local`);
 	return v;
-}
-
-function selectProvider(): CallProvider {
-	const configured = process.env.TELEPHONY_PROVIDER?.trim();
-	if (!configured || configured === 'mock') {
-		console.warn('[dispatch] TELEPHONY_PROVIDER unset — using the mock provider. No calls will be placed.');
-		return new MockCallProvider();
-	}
-	if (configured === 'telnyx') {
-		return new TelnyxCallProvider({
-			apiKey: required('TELNYX_API_KEY'),
-			texmlAppId: process.env.TELNYX_TEXML_APP_ID || undefined,
-			fromNumber: required('TELNYX_FROM_NUMBER'),
-			model: process.env.TELNYX_MODEL,
-			voice: process.env.TELNYX_VOICE,
-		});
-	}
-	throw new Error(`unknown TELEPHONY_PROVIDER "${configured}"`);
 }
 
 async function main(): Promise<void> {

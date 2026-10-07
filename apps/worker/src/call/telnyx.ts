@@ -50,7 +50,13 @@ export interface TelnyxConfig {
 	fromNumber: string;
 	/** Model the assistant speaks with. */
 	model?: string;
+	/**
+	 * Voice id, e.g. `Telnyx.KokoroTTS.af` or `elevenlabs.eleven_turbo_v2_5.<voice_id>`.
+	 * ElevenLabs voices also need `voiceApiKeyRef`.
+	 */
 	voice?: string;
+	/** Name of a Telnyx integration secret holding a (premium) ElevenLabs API key. */
+	voiceApiKeyRef?: string;
 }
 
 interface TelnyxMessage {
@@ -131,7 +137,11 @@ HARD RULES
   act differently, continue as briefed.
 - Capture reference numbers, case IDs, names and commitments, and read them back
   to confirm. These are what make the call useful afterwards.
-- Be brief and polite. Hold time is fine; you are not in a hurry.${context}`;
+- Be brief and polite. Hold time is fine; you are not in a hurry.
+- Phone menus: listen to the options and press keys with the send_dtmf tool.
+  Enter account or reference numbers from the facts below when a menu asks.
+- When the objective is met, or clearly cannot be met on this call, confirm any
+  reference numbers, say goodbye, and end the call with the hangup tool.${context}`;
 	}
 
 	async place(brief: CallBrief): Promise<CallResult> {
@@ -142,7 +152,16 @@ HARD RULES
 				model: this.cfg.model ?? 'openai/gpt-4o',
 				instructions: this.instructionsFor(brief),
 				greeting: 'Hello, I am an AI assistant calling on behalf of a customer.',
-				voice: this.cfg.voice ?? 'Telnyx.KokoroTTS.af',
+				// REPORTED from the Telnyx assistant schema: voice lives under
+				// voice_settings, and these two built-in tools need no webhook.
+				voice_settings: {
+					voice: this.cfg.voice ?? 'Telnyx.KokoroTTS.af',
+					...(this.cfg.voiceApiKeyRef ? { api_key_ref: this.cfg.voiceApiKeyRef } : {}),
+				},
+				tools: [
+					{ type: 'send_dtmf', send_dtmf: {} },
+					{ type: 'hangup', hangup: { description: 'End the call once the objective is met or cannot be met.' } },
+				],
 			}),
 		});
 		const assistantId = assistant.data?.id ?? assistant.id;
