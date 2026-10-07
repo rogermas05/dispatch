@@ -51,7 +51,9 @@ export interface TelnyxConfig {
 	/** Model the assistant speaks with. */
 	model?: string;
 	/**
-	 * Voice id, e.g. `Telnyx.KokoroTTS.af` or `elevenlabs.eleven_turbo_v2_5.<voice_id>`.
+	 * Voice id, e.g. `Telnyx.KokoroTTS.af_heart` or
+	 * `elevenlabs.eleven_turbo_v2_5.<voice_id>`. The Kokoro ids need a speaker
+	 * suffix — bare `Telnyx.KokoroTTS.af` is rejected with error 10015.
 	 * ElevenLabs voices also need `voiceApiKeyRef`.
 	 */
 	voice?: string;
@@ -158,7 +160,11 @@ HARD RULES
 				// REPORTED from the Telnyx assistant schema: voice lives under
 				// voice_settings, and these two built-in tools need no webhook.
 				voice_settings: {
-					voice: this.cfg.voice ?? 'Telnyx.KokoroTTS.af',
+					// Verified against the live API: `Telnyx.KokoroTTS.af` is rejected
+					// ("voice not found"); the speaker suffix is required. A Telnyx-native
+					// voice is the default deliberately — ElevenLabs ids additionally
+					// need an integration key stored on the account.
+					voice: this.cfg.voice ?? 'Telnyx.KokoroTTS.af_heart',
 					...(this.cfg.voiceApiKeyRef ? { api_key_ref: this.cfg.voiceApiKeyRef } : {}),
 				},
 				tools: [
