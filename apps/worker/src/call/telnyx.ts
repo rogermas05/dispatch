@@ -100,7 +100,10 @@ export class TelnyxCallProvider implements CallProvider {
 
 	async healthy(): Promise<boolean> {
 		try {
-			await this.api('/ai/assistants?page[size]=1');
+			// Brackets must be percent-encoded: Telnyx answers raw `page[size]`
+			// with 503, which would read as an outage and keep the agent
+			// permanently unavailable.
+			await this.api('/ai/assistants?page%5Bsize%5D=1');
 			return true;
 		} catch {
 			return false;

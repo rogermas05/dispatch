@@ -29,7 +29,8 @@
   },
   "homepage": "https://github.com/rogermas05/token-origins#readme",
   "devDependencies": {
-    "@masumi_network/sokosumi": "^1.0.4"
+    "@masumi_network/sokosumi": "^1.0.4",
+    "@railway/cli": "^5.63.4"
   },
   "private": true,
   "workspaces": [

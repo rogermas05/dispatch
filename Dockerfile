@@ -29,7 +29,9 @@ ENV NODE_ENV=production \
     JOURNAL_DIR=/data/journal \
     RESULT_DIR=/data/results
 RUN mkdir -p /data && chown -R node:node /data
-VOLUME /data
+# No VOLUME directive: Railway rejects it and supplies its own volumes. The
+# worker's journal must survive a restart — without it a task already in flight
+# could be picked up a second time — so /data is a Railway Volume in production.
 USER node
 
 # PROCESS=api serves MIP-003 and runs paid jobs; PROCESS=worker polls Sokosumi.
