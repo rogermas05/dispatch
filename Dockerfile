@@ -5,22 +5,35 @@
 # the input would make the on-chain commitment wrong.
 FROM node:24-slim AS base
 WORKDIR /app
-ENV NODE_ENV=production
 
 COPY package.json package-lock.json ./
 COPY packages/schema/package.json packages/schema/
 COPY apps/worker/package.json apps/worker/
 COPY apps/agent-api/package.json apps/agent-api/
-RUN npm ci --omit=optional
+COPY apps/web/package.json apps/web/
+# Dev dependencies are included on purpose: the processes run through tsx, and
+# the worker shells out to the Sokosumi CLI (a root dev dependency).
+RUN npm ci --include-workspace-root \
+      --workspace @token-origins/schema --workspace @token-origins/worker --workspace @token-origins/agent-api \
+ && npm cache clean --force
 
 COPY packages/schema packages/schema
 COPY apps/worker apps/worker
 COPY apps/agent-api apps/agent-api
 COPY scripts scripts
 
-# PROCESS=api serves MIP-003; PROCESS=worker polls Sokosumi.
-# Exactly one worker may run at a time — see README operational rule 2. Do not
-# scale this service past one replica.
+# Jobs, the task journal and results must survive redeploys: mount a persistent
+# volume at /data. Losing it mid-escrow loses what was committed on-chain.
+ENV NODE_ENV=production \
+    JOBS_DIR=/data/jobs \
+    JOURNAL_DIR=/data/journal \
+    RESULT_DIR=/data/results
+RUN mkdir -p /data && chown -R node:node /data
+VOLUME /data
+USER node
+
+# PROCESS=api serves MIP-003 and runs paid jobs; PROCESS=worker polls Sokosumi.
+# Exactly one replica of each — see README operational rule 2.
 ENV PROCESS=api
 EXPOSE 3013
-CMD ["sh", "-c", "if [ \"$PROCESS\" = worker ]; then npx tsx apps/worker/src/index.ts; else npx tsx apps/agent-api/src/index.ts; fi"]
+CMD ["sh", "-c", "if [ \"$PROCESS\" = worker ]; then exec npx tsx apps/worker/src/index.ts; else exec npx tsx apps/agent-api/src/index.ts; fi"]

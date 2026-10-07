@@ -1,11 +1,11 @@
 import { createHash } from "node:crypto";
 import { describe, expect, test } from "vitest";
-import { canonicalize } from "./canonical.ts";
+import { commitmentPreimage } from "./canonical.ts";
 import { Feed } from "./feed.ts";
 import { buildMockFeed } from "./mock/build.ts";
 
 const mock = () => structuredClone(buildMockFeed());
-const sha256 = (value: unknown) => createHash("sha256").update(canonicalize(value)).digest("hex");
+const sha256 = (value: unknown, nonce: string | null) => createHash("sha256").update(commitmentPreimage(value, nonce)).digest("hex");
 
 describe("mock feed", () => {
   test("passes the feed schema and integrity checks", () => {
@@ -16,10 +16,16 @@ describe("mock feed", () => {
     expect(buildMockFeed()).toEqual(buildMockFeed());
   });
 
-  test("input and output hashes are real SHA-256 over the canonical JSON", () => {
+  test("agent hires carry a purchaser nonce (MIP-004); Sokosumi tasks do not", () => {
+    const feed = mock();
+    const viaOf = (j: (typeof feed.jobs)[number]) => feed.hirers.find((h) => h.id === j.hirer_id)!.via;
+    for (const job of feed.jobs) expect(job.identifier_from_purchaser !== null).toBe(viaOf(job) === "masumi");
+  });
+
+  test("input and output hashes are real SHA-256 over the commitment pre-image", () => {
     for (const job of mock().jobs) {
-      expect(job.input_hash).toBe(sha256(job.input));
-      expect(job.output_hash).toBe(sha256(job.result));
+      expect(job.input_hash).toBe(sha256(job.input, job.identifier_from_purchaser));
+      expect(job.output_hash).toBe(sha256(job.result, job.identifier_from_purchaser));
     }
   });
 

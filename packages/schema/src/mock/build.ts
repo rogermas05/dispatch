@@ -2,7 +2,7 @@
 // SHA-256 over the same canonical JSON the agent API commits on-chain, so the
 // dashboard's in-browser verification is genuine even though the transactions are mock.
 import { createHash } from "node:crypto";
-import { canonicalize } from "../canonical.ts";
+import { commitmentPreimage } from "../canonical.ts";
 import type { CallOutcome, Feed, FeedEvent, Job, Receipt } from "../feed.ts";
 import { HIRERS, PARTIES, STORY_JOBS, type StoryJob } from "./story.ts";
 
@@ -14,7 +14,7 @@ const MINUTE = 60;
 const HOUR = 3600;
 
 const sha256 = (text: string): string => createHash("sha256").update(text).digest("hex");
-const hashOf = (value: unknown): string => sha256(canonicalize(value));
+const hashOf = (value: unknown, nonce: string | null): string => sha256(commitmentPreimage(value, nonce));
 const iso = (seconds: number): string => new Date(STORY_START + seconds * 1000).toISOString();
 const mockReceipt = (id: string, kind: Receipt["kind"], jobId: string | null): Receipt => ({
   id,
@@ -54,6 +54,8 @@ export function buildMockFeed(): Feed {
     const price = PRICES[story.id] ?? DEFAULT_PRICE;
     const start = t;
     const job_id = story.id;
+    // Agent hires arrive over MIP-003 with a purchaser nonce; Sokosumi tasks do not.
+    const nonce = hirer.via === "masumi" ? sha256(`nonce:${job_id}`).slice(0, 20) : null;
 
     if (story.hirer_task) {
       emit(t, "registry_search", `${hirer.name} needs a phone call it cannot make. It searches the Masumi registry and finds Dispatch.`, { job_id });
@@ -101,7 +103,8 @@ export function buildMockFeed(): Feed {
       blockchain_identifier: `mock-${sha256(`escrow:${job_id}`).slice(0, 24)}`,
       hirer_task: story.hirer_task,
       input: story.input,
-      input_hash: hashOf(story.input),
+      identifier_from_purchaser: nonce,
+      input_hash: hashOf(story.input, nonce),
       price: price.toString(),
       deadlines: {
         pay_by: iso(start + 10 * MINUTE),
@@ -110,7 +113,7 @@ export function buildMockFeed(): Feed {
         external_dispute_unlock_at: iso(start + 12 * HOUR),
       },
       result,
-      output_hash: hashOf(result),
+      output_hash: hashOf(result, nonce),
     });
     t += 10 * MINUTE;
   }

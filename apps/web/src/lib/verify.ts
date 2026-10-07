@@ -1,4 +1,4 @@
-import { canonicalize, type CallOutcome } from "@token-origins/schema";
+import { commitmentPreimage, type CallOutcome } from "@token-origins/schema";
 
 export interface CommitmentCheck {
   computed: string;
@@ -10,9 +10,12 @@ async function sha256Hex(text: string): Promise<string> {
   return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-/** Recomputes a Masumi input/output hash in the browser, exactly as the agent API commits it. */
-export async function verifyCommitment(value: unknown, expected: string): Promise<CommitmentCheck> {
-  const computed = await sha256Hex(canonicalize(value));
+/**
+ * Recomputes a commitment hash in the browser, exactly as the agent API commits it:
+ * MIP-004 ("<nonce>;" prefix) for agent hires, plain canonical JSON for Coworker tasks.
+ */
+export async function verifyCommitment(value: unknown, expected: string, identifierFromPurchaser: string | null = null): Promise<CommitmentCheck> {
+  const computed = await sha256Hex(commitmentPreimage(value, identifierFromPurchaser));
   return { computed, matches: computed === expected };
 }
 

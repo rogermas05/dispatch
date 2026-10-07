@@ -48,8 +48,9 @@ export function ProofPanel({ feed, snapshot }: { feed: Feed; snapshot: Snapshot 
   }
 
   const run = async (tampered: boolean) => {
-    const input = await verifyCommitment(job.input, job.input_hash);
-    const output = committed && job.output_hash ? await verifyCommitment(tampered && job.result ? tamper(job.result) : job.result, job.output_hash) : null;
+    const nonce = job.identifier_from_purchaser;
+    const input = await verifyCommitment(job.input, job.input_hash, nonce);
+    const output = committed && job.output_hash ? await verifyCommitment(tampered && job.result ? tamper(job.result) : job.result, job.output_hash, nonce) : null;
     setChecks({ jobId: job.id, input, output, tampered });
   };
   const current = checks?.jobId === job.id ? checks : null;

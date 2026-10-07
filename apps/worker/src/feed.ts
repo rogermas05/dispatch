@@ -88,6 +88,7 @@ export function buildFeed(opts: BuildOptions) {
 			blockchain_identifier: null,
 			hirer_task: null,
 			input,
+			identifier_from_purchaser: null,
 			input_hash: SHA(input),
 			price: '1000000',
 			deadlines: {

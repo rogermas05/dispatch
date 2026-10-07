@@ -57,6 +57,7 @@
         "context": "Member: Maya Chen. Claim 88-20417, physiotherapy, 12 Sep 2026.",
         "max_duration_seconds": 2700
       },
+      "identifier_from_purchaser": null,
       "input_hash": "a1210fe0f15c24befa9436208e4948d100b4cacd0549a0cff670ac63ae34d9ea",
       "price": "1000000",
       "deadlines": {
@@ -173,7 +174,8 @@
         "context": "Consignee: Juniper Home, 41 Alder Street. Shipment SH-7731, 3 pallets.",
         "max_duration_seconds": 900
       },
-      "input_hash": "dc297309317130c5adf0d7059b32951be9f34ceb3651f4d35f9409589c077bc6",
+      "identifier_from_purchaser": "ba9ac82bc0a1a8544bd7",
+      "input_hash": "c96009a3f2ba0d34f3bb731109b49ad2e945fc116f9ea773bb734212d1ec5d88",
       "price": "500000",
       "deadlines": {
         "pay_by": "2026-10-07T02:54:09.000Z",
@@ -238,7 +240,7 @@
           "The transcript records the booking; it does not prove the pallet will arrive Thursday."
         ]
       },
-      "output_hash": "59d3e7a2f999a6cb53999ae19886a8db20774e1c4ef0dadc8383a7a3924d505f"
+      "output_hash": "40efc6581785c62f8f53552301ad7461f719c6a07998a392895f8e506a8f3707"
     }
   ],
   "receipts": [

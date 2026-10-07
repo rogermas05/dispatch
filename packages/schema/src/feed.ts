@@ -68,6 +68,12 @@ export const Job = z.object({
   /** For agent hirers: the task the agent was doing when it needed a phone call. */
   hirer_task: z.object({ title: z.string(), resolution: z.string() }).nullable(),
   input: JobInput,
+  /**
+   * MIP-003 purchaser nonce. When present, hashes follow MIP-004:
+   * input = sha256(nonce;canonical(input)), output = sha256(nonce;canonical(result)).
+   * Null for Sokosumi Coworker tasks, which hash the plain canonical JSON.
+   */
+  identifier_from_purchaser: z.string().regex(/^[0-9a-fA-F]{14,26}$/).nullable(),
   input_hash: Hex64,
   price: Amount,
   deadlines: z.object({

@@ -46,6 +46,14 @@ The payment service is seeded and the seller wallet holds 100 test ADA.
 Next: on-chain registration, which needs a publicly reachable `apiBaseUrl` —
 so Phase 5 hosting has to come before Checkpoint 3 rather than after.
 
+**Hireable by other agents (code complete, not yet deployed).** The MIP-003 path
+that Sokosumi's `agents hire` and Masumi buyers use now works end to end:
+MIP-004 hashes, escrow via the payment service, a runner that dials only on a
+confirmed `FundsLocked` and submits the result hash, durable jobs, and a call
+allowlist. Verified by `npm run smoke -w @token-origins/agent-api` against a
+fake payment service, and a built Docker image. Deployment and registration
+steps: [`docs/DEPLOY.md`](docs/DEPLOY.md) and `scripts/register-agent.mjs`.
+
 Local prereqs verified: Node v24.16.0, PostgreSQL 17.11, Docker 29.8.1, Sokosumi
 CLI 1.0.4 (project-local), Anthropic API reachable.
 

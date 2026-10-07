@@ -20,6 +20,7 @@ services:
       AGENT_API_PORT: '3013'
     env_file: [.env.local]
     ports: ['3013:3013']
+    volumes: ['dispatch-data:/data']
 
   worker:
     build: .
@@ -30,7 +31,9 @@ services:
     # charges, which is an explicit judging criterion.
     deploy:
       replicas: 1
+    volumes: ['dispatch-data:/data']
     depends_on: [agent-api]
 
 volumes:
   pgdata:
+  dispatch-data:

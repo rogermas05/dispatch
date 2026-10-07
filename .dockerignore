@@ -1,0 +1,8 @@
+# Secrets and local state never enter the image.
+.env*
+!.env.example
+.local
+**/node_modules
+**/dist
+.git
+apps/web/public/mock-feed.json

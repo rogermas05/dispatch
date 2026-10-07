@@ -213,6 +213,17 @@
               "authorization"
             ]
           },
+          "identifier_from_purchaser": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[0-9a-fA-F]{14,26}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "input_hash": {
             "type": "string",
             "pattern": "^[0-9a-f]{64}$"
@@ -382,6 +393,7 @@
           "blockchain_identifier",
           "hirer_task",
           "input",
+          "identifier_from_purchaser",
           "input_hash",
           "price",
           "deadlines",
