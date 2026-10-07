@@ -38,18 +38,42 @@ const briefSchema = z.object({
 
 const outcomeSchema = z.object({
 	summary: z.string(),
-	// Models return numbers, nested objects and nulls here. The values are for a
-	// human to read, so coerce rather than fail a completed call over formatting.
+	// Models return numbers, nested objects, nulls — and arrays, which is what
+	// threw away a completed paid call: the conversation happened, the escrow was
+	// funded, and the result was discarded over the container type of a field
+	// whose values are only ever read by a human.
+	//
+	// An array arrives either as [{name, value}] pairs or as a bare list; both
+	// are flattened to string values. Anything genuinely unparseable is dropped
+	// rather than raised, because by this point the call is already made and the
+	// money is already locked.
+	// Accepts anything at all. A narrower union is a way to throw after the call
+	// is already made, which is the one outcome worth engineering against here.
 	artifacts: z
-		.union([z.record(z.unknown()), z.null()])
+		.unknown()
 		.optional()
-		.transform((v) =>
-			Object.fromEntries(
-				Object.entries(v ?? {})
-					.filter(([, x]) => x !== null && x !== undefined && x !== '')
+		.transform((v) => {
+			if (v === null || v === undefined) return {};
+			if (typeof v !== 'object') return { note: String(v) };
+			const entries: Array<[string, unknown]> = Array.isArray(v)
+				? v.map((item, i) => {
+						if (item && typeof item === 'object' && !Array.isArray(item)) {
+							const o = item as Record<string, unknown>;
+							const key = o.name ?? o.key ?? o.label ?? o.type;
+							if (typeof key === 'string') return [key, o.value ?? o.text ?? o.detail ?? ''] as [string, unknown];
+							const [[k, val] = ['', '']] = Object.entries(o);
+							return [k || `item_${i + 1}`, val] as [string, unknown];
+						}
+						return [`item_${i + 1}`, item] as [string, unknown];
+					})
+				: Object.entries(v as Record<string, unknown>);
+
+			return Object.fromEntries(
+				entries
+					.filter(([k, x]) => k && x !== null && x !== undefined && x !== '')
 					.map(([k, x]) => [k, typeof x === 'string' ? x : JSON.stringify(x)]),
-			),
-		),
+			);
+		}),
 	humanFollowUp: z.string().nullable().optional().transform((v) => v ?? null),
 	caveats: z
 		.union([z.array(z.unknown()), z.string(), z.null()])
@@ -63,6 +87,8 @@ const outcomeSchema = z.object({
 		.optional()
 		.transform((v) => v === true || v === 'true'),
 });
+
+export { outcomeSchema as __test_outcomeSchema };
 
 const researchQuestionSchema = z.object({
 	question: z
