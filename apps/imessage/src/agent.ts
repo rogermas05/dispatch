@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { CallProvider } from '../../worker/src/call/provider.ts';
-import { placePaidCall } from './paid-call.js';
+import { quoteCall, payAndRun, type Quote } from './paid-call.js';
 import { parseAllowlist } from '../../worker/src/lib/allowlist.ts';
 
 /**
@@ -36,10 +36,16 @@ If you don't have the number, ask. Never guess one.
 If the rest is obvious, don't interrogate them — just go.
 Don't agree to spend money, cancel things, or commit them to anything unless they said so. If it actually matters, ask: "just asking, or do you want me to actually cancel it?"
 
-Then say you're sending your Sokosumi agent. Don't quote a price — you don't know it yet, the agent quotes it when the job starts and you'll tell them then. Something like "cool, sending my Sokosumi agent now" is right.
+QUOTE FIRST, THEN CALL
+Two steps, always.
 
-WHILE IT RUNS
-You'll get a quote and a payment-locked update automatically. Don't narrate them again.
+1. get_quote — prices it. Nothing is charged, nothing is dialed. Then tell them the number plainly: "ok it's 0.2 tUSDM for that, want me to?" Keep it casual, it's cents.
+2. accept_quote — only after they say yes. That locks the money and sends your Sokosumi agent.
+
+If they say no, drop it. The quote just expires, nothing is spent. Don't push.
+If they already said "yes do it" before seeing a price, still quote first and tell them — then go straight into accepting it, no second question.
+
+You'll get a "payment locked" update automatically while it runs. Don't repeat it.
 
 AFTER
 Lead with what they wanted to know. If you got an answer, give it: "he said black". Add a reference number if there is one.
@@ -57,9 +63,9 @@ This is a test setup — the only number reachable is the one texting you. Silly
 
 const TOOLS: Anthropic.Tool[] = [
 	{
-		name: 'place_call',
+		name: 'get_quote',
 		description:
-			'Place a real phone call and return the outcome. Takes a few minutes. Only call this when you have a number, a clear objective, and know what you are authorized to agree to.',
+			'Price a call without paying for it. Returns the exact cost. Nothing is charged and no call is placed — use this first, tell them the price, and wait for a yes.',
 		input_schema: {
 			type: 'object',
 			properties: {
@@ -68,17 +74,29 @@ const TOOLS: Anthropic.Tool[] = [
 				authorization: {
 					type: 'string',
 					description:
-						'Exactly what you may agree to on their behalf. Be conservative — include only what they actually granted. If they granted nothing, say so.',
+						'Exactly what you may agree to on their behalf. Be conservative — only what they actually granted.',
 				},
-				context: { type: 'string', description: 'Facts you may need on the call: account numbers, names, dates' },
+				context: { type: 'string', description: 'Facts needed on the call: account numbers, names, dates' },
 			},
 			required: ['to', 'objective', 'authorization'],
+		},
+	},
+	{
+		name: 'accept_quote',
+		description:
+			'Accept the quote you were just given: locks the funds in escrow and places the call. Only use this after they have agreed to the price. Takes a few minutes.',
+		input_schema: {
+			type: 'object',
+			properties: { quote_id: { type: 'string', description: 'The quote_id from get_quote' } },
+			required: ['quote_id'],
 		},
 	},
 ];
 
 export interface Conversation {
 	messages: Anthropic.MessageParam[];
+	/** Quotes given but not yet accepted, by job id. They expire at payByTime. */
+	quotes?: Map<string, Quote>;
 }
 
 export interface AgentDeps {
@@ -112,40 +130,56 @@ export async function respond(convo: Conversation, userText: string, deps: Agent
 				.trim();
 		}
 
-		const args = toolUse.input as { to: string; objective: string; authorization: string; context?: string };
 		let result: string;
 
-		if (allowed && !allowed.has(args.to)) {
-			// Refused before dialing, not after. The allowlist is what separates a
-			// demo from an accidental robocall.
-			result = `REFUSED: ${args.to} is not on the allowed-numbers list, so no call was placed. Tell the user you can only call approved numbers right now.`;
+		if (toolUse.name === 'get_quote') {
+			const args = toolUse.input as { to: string; objective: string; authorization: string; context?: string };
+			if (allowed && !allowed.has(args.to)) {
+				result = `REFUSED: ${args.to} is not on the allowed-numbers list. Nothing was quoted and no call was placed. Tell them you can only call approved numbers right now.`;
+			} else {
+				try {
+					const quote = await quoteCall(args);
+					(convo.quotes ??= new Map()).set(quote.jobId, quote);
+					result = JSON.stringify({
+						quote_id: quote.jobId,
+						price_usdm: quote.priceUsdm,
+						expires_at: new Date(quote.payByTime).toISOString(),
+						note: 'Nothing is charged yet. Tell them the price and wait for a yes before calling accept_quote.',
+					});
+				} catch (err) {
+					result = `Could not get a quote: ${err instanceof Error ? err.message : String(err)}. Say so plainly.`;
+				}
+			}
 		} else {
-			const said = res.content.filter((b): b is Anthropic.TextBlock => b.type === 'text').map((b) => b.text).join('').trim();
-			if (said) await deps.notify(said);
-			try {
-				const paid = await placePaidCall(
-					{ to: args.to, objective: args.objective, authorization: args.authorization, context: args.context },
-					{
-						onQuote: (usdm) => deps.notify(`Quote came back at ${usdm} tUSDM. Locking it in escrow now.`),
-						onFundsLocked: () => deps.notify('Payment locked — calling now.'),
-					},
-				);
-				result = JSON.stringify({
-					jobStatus: paid.status,
-					priceUsdm: paid.priceUsdm,
-					jobId: paid.jobId,
-					outputHash: paid.outputHash,
-					result: paid.result,
-					...(paid.status === 'failed'
-						? {
-								error: paid.error,
-								billing:
-									'The call did not complete, so no result hash was submitted and the escrow refunds the buyer automatically when the deadline passes. Tell them plainly that it failed and that they are not being charged.',
-							}
-						: {}),
-				});
-			} catch (err) {
-				result = `The call failed before completing: ${err instanceof Error ? err.message : String(err)}. Tell the user plainly; do not invent an outcome.`;
+			const { quote_id } = toolUse.input as { quote_id: string };
+			const quote = convo.quotes?.get(quote_id);
+			if (!quote) {
+				result = 'No such quote. Get a fresh one with get_quote before calling.';
+			} else {
+				const said = res.content.filter((b): b is Anthropic.TextBlock => b.type === 'text').map((b) => b.text).join('').trim();
+				if (said) await deps.notify(said);
+				try {
+					const paid = await payAndRun(quote, {
+						onFundsLocked: () => deps.notify('payment locked, calling now'),
+					});
+					convo.quotes?.delete(quote_id);
+					result = JSON.stringify({
+						jobStatus: paid.status,
+						priceUsdm: paid.priceUsdm,
+						jobId: paid.jobId,
+						outputHash: paid.outputHash,
+						result: paid.result,
+						...(paid.status === 'failed'
+							? {
+									error: paid.error,
+									billing:
+										'The call did not complete, so no result hash was submitted and the escrow refunds automatically when the deadline passes. Tell them plainly that it failed and that they are not being charged.',
+								}
+							: {}),
+					});
+				} catch (err) {
+					result = `The call failed: ${err instanceof Error ? err.message : String(err)}. Tell them plainly and that they are not charged for a call that did not happen.`;
+				}
 			}
 		}
 

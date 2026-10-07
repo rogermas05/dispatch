@@ -58,11 +58,25 @@ const toWhole = (atomic: string): string => {
 	return Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/0$/, '');
 };
 
-export async function placePaidCall(brief: PaidCallBrief, progress: Progress = {}): Promise<PaidCallResult> {
-	const api = env('AGENT_API_PUBLIC_URL');
-	const mps = env('PAYMENT_SERVICE_URL');
-	const buyKey = env('MPS_BUY_KEY');
+export interface Quote {
+	jobId: string;
+	priceUsdm: string | null;
+	/** Everything the purchase call needs, carried verbatim. */
+	terms: Record<string, unknown>;
+	identifierFromPurchaser: string;
+	/** Unix ms. After this the quote expires unfunded and the job dies. */
+	payByTime: number;
+}
 
+/**
+ * Quote a job without paying for it.
+ *
+ * Creating the job and funding it are separate on purpose: the escrow gives the
+ * buyer until payByTime to decide, so a person can see the price and say no. A
+ * quote they never accept simply expires — nothing is locked, nothing is spent.
+ */
+export async function quoteCall(brief: PaidCallBrief): Promise<Quote> {
+	const api = env('AGENT_API_PUBLIC_URL');
 	const identifierFromPurchaser = randomBytes(8).toString('hex');
 	const job = (await json(`${api}/start_job`, {
 		method: 'POST',
@@ -79,9 +93,28 @@ export async function placePaidCall(brief: PaidCallBrief, progress: Progress = {
 	})) as Record<string, any>;
 
 	const funds = (job.RequestedFunds ?? []) as Array<{ unit: string; amount: string }>;
-	const priceUsdm = funds[0] ? toWhole(funds[0].amount) : null;
-	if (priceUsdm) await progress.onQuote?.(priceUsdm);
+	return {
+		jobId: String(job.id),
+		priceUsdm: funds[0] ? toWhole(funds[0].amount) : null,
+		terms: job,
+		identifierFromPurchaser,
+		payByTime: Number(job.payByTime),
+	};
+}
 
+/** Accept a quote: lock the funds, then wait for the call to finish. */
+export async function payAndRun(quote: Quote, progress: Progress = {}): Promise<PaidCallResult> {
+	const api = env('AGENT_API_PUBLIC_URL');
+	const mps = env('PAYMENT_SERVICE_URL');
+	const buyKey = env('MPS_BUY_KEY');
+	const job = quote.terms as Record<string, any>;
+	const funds = (job.RequestedFunds ?? []) as Array<{ unit: string; amount: string }>;
+	const priceUsdm = quote.priceUsdm;
+	const identifierFromPurchaser = quote.identifierFromPurchaser;
+
+	if (Date.now() > quote.payByTime) {
+		return { status: 'failed', priceUsdm, jobId: quote.jobId, error: 'the quote expired before it was accepted' };
+	}
 	// Funds lock before any work starts. Deadlines are signed into
 	// blockchainIdentifier, so they are echoed back exactly as issued.
 	await json(`${mps}/purchase/`, {
