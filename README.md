@@ -217,6 +217,7 @@ npm install
 - Product thesis — [`docs/PRODUCT.md`](docs/PRODUCT.md)
 - Build plan, phases, failure modes — [`docs/BUILD.md`](docs/BUILD.md)
 - Verified tooling corrections — [`docs/FINDINGS.md`](docs/FINDINGS.md) *(overrides the plan where they disagree)*
+- Demo script and pitch — [`docs/DEMO.md`](docs/DEMO.md)
 - Second builder joining — [`docs/ONBOARDING.md`](docs/ONBOARDING.md)
 - Superseded material — [`docs/archive/`](docs/archive/)
 
