@@ -1,6 +1,6 @@
 # Dispatch — submission artifacts
 
-Generated 2026-10-07T05:25:28.056Z from `.local/` evidence and live chain queries.
+Generated 2026-10-07T07:11:14.240Z from `.local/` evidence and live chain queries.
 
 Every claim is **VERIFIED** (we measured it) or **REPORTED** (a service told us).
 A Sokosumi task marked `COMPLETED` is REPORTED payment, not verified payment —
@@ -68,12 +68,17 @@ AI unprompted.
 | Network | Cardano **Preprod** |
 | Seller address | `addr_test1qpljsrcjcqusr3pl2jcuz38yl5csgw5sc682hahqqp38pf6y4u32x337mw322lqsatzmlc32kekk6rscktudu99rdz6sflargg` |
 | Test USDM unit | `16a55b2a349361ff88c03788f93e1e966e5d689605d044fef722ddde0014df10745553444d` |
-| Current balance | 100000000 tUSDM, 99545793 lovelace |
+| Current balance | 101000000 tUSDM, 97418921 lovelace |
 
-**NOT YET VERIFIED.** No inbound USDM transfer to the seller address has been
-found on-chain. Escrow releases only after `unlockTime`, and the collection
-transaction is submitted by our node after that — so this stays unverified until
-the chain says otherwise. Re-run this script once settlement completes.
+**VERIFIED — confirmed collection transaction**
+
+| | |
+|---|---|
+| Transaction | `2c499142236b5a1c4db2e0aaef1e318a1d9ba8d931ba4cb6511cf4c1d9966c83` |
+| USDM received | 1000000 (1 tUSDM) |
+| Block | 5263500 |
+| Time | 2026-10-07T07:10:14.000Z |
+| Explorer | https://preprod.cardanoscan.io/transaction/2c499142236b5a1c4db2e0aaef1e318a1d9ba8d931ba4cb6511cf4c1d9966c83 |
 
 ## 7. Presentation
 

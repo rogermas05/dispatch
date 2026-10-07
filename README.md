@@ -39,6 +39,12 @@ Full thesis, including pricing and the boundaries we hold: [`docs/PRODUCT.md`](d
 
 ## Status
 
+**Checkpoints 0–5 are VERIFIED, including the one that matters: a paid call
+settled on-chain.** A buyer locked 1 tUSDM in Masumi escrow, Dispatch placed a
+real phone call, committed the result hash on-chain, and after the dispute
+window our node collected the payment —
+[`2c499142…`](https://preprod.cardanoscan.io/transaction/2c499142236b5a1c4db2e0aaef1e318a1d9ba8d931ba4cb6511cf4c1d9966c83).
+
 **Checkpoints 0, 1, 2T and 2 are VERIFIED.** Dispatch has placed a real phone
 call, and a Sokosumi task has run end to end through the worker to `COMPLETED`.
 The payment service is seeded and the seller wallet holds 100 test ADA.
@@ -64,7 +70,7 @@ CLI 1.0.4 (project-local), Anthropic API reachable.
 | 2T | One real outbound call placed, with transcript | ✅ **VERIFIED** |
 | 2 | A task reaches `COMPLETED` with a real result — unpaid | ✅ **VERIFIED** |
 | 3 | `RegistrationConfirmed` on-chain; `/availability` 200; wallet funded | ✅ **VERIFIED** |
-| 4 | **One paid call settles — confirmed collection tx, USDM received** | ☐ |
+| 4 | **One paid call settles — confirmed collection tx, USDM received** | ✅ **VERIFIED** |
 | 5 | Everything survives with all local machines off | ✅ **VERIFIED** — all four services run on Railway |
 | 6 | Connected to the TOKEN2049 org, submission assembled | ☐ |
 | 7 | Agent-to-agent: another agent hires and pays Dispatch mid-task | ☐ |
