@@ -1,3 +1,4 @@
+import { E164 } from '../../worker/src/lib/allowlist.js';
 import type { CallBrief } from '../../worker/src/lib/types.js';
 
 /**
@@ -17,7 +18,6 @@ export const MAX_CALL_SECONDS = 1800;
 export const DEFAULT_CALL_SECONDS = 900;
 const MIN_CALL_SECONDS = 60;
 const MAX_TEXT = 4000;
-const E164 = /^\+[1-9]\d{6,14}$/;
 /** One primary number plus up to four more per job. */
 export const MAX_CALLS = 5;
 const USDM_DECIMALS = 6;
@@ -245,10 +245,4 @@ export function parseCallInput(input: Record<string, unknown>, policy: CallPolic
 	};
 }
 
-/** Parse DISPATCH_ALLOWED_NUMBERS ("+1555..., +1555...") into a set, rejecting malformed entries loudly. */
-export function parseAllowlist(raw: string | undefined): Set<string> {
-	const numbers = (raw ?? '').split(',').map((n) => n.trim()).filter(Boolean);
-	const bad = numbers.filter((n) => !E164.test(n));
-	if (bad.length) throw new Error(`DISPATCH_ALLOWED_NUMBERS has non-E.164 entries: ${bad.join(', ')}`);
-	return new Set(numbers);
-}
+export { parseAllowlist } from '../../worker/src/lib/allowlist.js';

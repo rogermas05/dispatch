@@ -35,7 +35,12 @@ Then per service:
 
 - **agent-api** — `PROCESS=api`, generate a domain, **attach a volume at `/data`**, replicas: 1
 - **worker** — `PROCESS=worker`, **attach a volume at `/data`**, **replicas: 1**
-- **payment-service** — deploy `masumi-payment-service/`, `PORT=3012`
+- **payment-service** — deploy `masumi-payment-service/`, `PORT=3012`. That
+  directory is not in this repo (it is gitignored and lives on the machine that
+  seeded the wallets). **Deploy the exact commit that machine runs**
+  (`git -C masumi-payment-service rev-parse HEAD`) and record it here. The
+  TOKEN2049 reference team's payments broke because the running build and the
+  migrated database schema came from different versions.
 
 ### Environment
 

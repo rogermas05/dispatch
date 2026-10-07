@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
 import type { CallProvider } from './call/provider.js';
+import { NumberNotAllowedError } from './lib/allowlist.js';
 import type { CallBrief, CallOutcome, CallResult } from './lib/types.js';
 
 /**
@@ -151,8 +152,11 @@ export async function reportOutcome(brief: CallBrief, result: CallResult): Promi
 export async function runBrief(
 	task: { name: string; description: string },
 	provider: CallProvider,
+	/** Numbers Dispatch may dial; null only for the mock provider. Checked after parsing, before dialing. */
+	allowedNumbers: ReadonlySet<string> | null,
 ): Promise<CallOutcome> {
 	const brief = await parseBrief(task.name, task.description);
+	if (allowedNumbers && !allowedNumbers.has(brief.to)) throw new NumberNotAllowedError(brief.to);
 	const result = await provider.place(brief);
 	return reportOutcome(brief, result);
 }

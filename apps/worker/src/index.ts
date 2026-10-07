@@ -4,6 +4,7 @@ import { hostname } from 'node:os';
 import { Journal } from './lib/journal.js';
 import { SokosumiClient } from './lib/sokosumi.js';
 import { selectProvider } from './call/select.js';
+import { allowlistFromEnv, NumberNotAllowedError } from './lib/allowlist.js';
 import type { CallProvider } from './call/provider.js';
 import { runBrief } from './agent.js';
 
@@ -38,6 +39,8 @@ async function main(): Promise<void> {
 		personal: true,
 	});
 	const provider = selectProvider();
+	const allowedNumbers = allowlistFromEnv();
+	if (allowedNumbers?.size === 0) console.warn('[dispatch] DISPATCH_ALLOWED_NUMBERS is empty: every task will be refused without dialing.');
 
 	// Operator-supervised recovery for a task left RUNNING by a crashed run.
 	// The journal deliberately refuses these on its own, because from inside the
@@ -50,7 +53,7 @@ async function main(): Promise<void> {
 		console.warn(`[dispatch] resuming ${taskId} on operator instruction — confirm no other worker is running`);
 		journal.advance(taskId, 'failed', { error: 'reset by --resume' });
 		if (!journal.claim(taskId)) throw new Error(`journal still refuses ${taskId}; inspect it by hand`);
-		await handle(taskId, { journal, sokosumi, provider, resultDir, alreadyRunning: true });
+		await handle(taskId, { journal, sokosumi, provider, resultDir, allowedNumbers, alreadyRunning: true });
 		return;
 	}
 
@@ -79,7 +82,7 @@ async function main(): Promise<void> {
 					console.log(`[dispatch] skipping ${task.id} — journal says do not touch`);
 					continue;
 				}
-				await handle(task.id, { journal, sokosumi, provider, resultDir });
+				await handle(task.id, { journal, sokosumi, provider, resultDir, allowedNumbers });
 			}
 		} catch (err) {
 			console.error('[dispatch] poll failed:', err instanceof Error ? err.message : err);
@@ -96,10 +99,11 @@ async function handle(
 		sokosumi: SokosumiClient;
 		provider: CallProvider;
 		resultDir: string;
+		allowedNumbers: ReadonlySet<string> | null;
 		alreadyRunning?: boolean;
 	},
 ): Promise<void> {
-	const { journal, sokosumi, provider, resultDir, alreadyRunning } = deps;
+	const { journal, sokosumi, provider, resultDir, allowedNumbers, alreadyRunning } = deps;
 	try {
 		// Read the brief before claiming it remotely, so a failure to read does
 		// not leave a task RUNNING with nobody working on it.
@@ -111,10 +115,25 @@ async function handle(
 			journal.advance(taskId, 'running');
 		}
 
-		const outcome = await runBrief(
-			{ name: brief.name ?? '', description: brief.description ?? '' },
-			provider,
-		);
+		let outcome;
+		try {
+			outcome = await runBrief({ name: brief.name ?? '', description: brief.description ?? '' }, provider, allowedNumbers);
+		} catch (err) {
+			if (!(err instanceof NumberNotAllowedError)) throw err;
+			// Refuse visibly: complete the task with the reason rather than leave it RUNNING.
+			const refusal = {
+				status: 'refused',
+				summary: `Not called: ${err.number} is not on the list of numbers Dispatch may call.`,
+				humanFollowUp: 'Ask the operator to approve this number, or use a number Dispatch is permitted to call.',
+				caveats: ['No call was placed.'],
+			};
+			const refusalPath = join(resultDir, `${taskId}.json`);
+			writeFileSync(refusalPath, JSON.stringify(refusal, null, 2), 'utf8');
+			const completed = await sokosumi.complete(taskId, refusalPath);
+			journal.advance(taskId, 'completed', { resultPath: refusalPath, completeEventId: completed.eventId });
+			console.log(`[dispatch] ${taskId} refused: ${err.message}`);
+			return;
+		}
 
 		let body = JSON.stringify(outcome, null, 2);
 		if (Buffer.byteLength(body, 'utf8') > RESULT_BYTE_LIMIT) {
