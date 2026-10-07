@@ -20,6 +20,14 @@ import { readFileSync, existsSync } from 'node:fs';
 
 const USDM_UNIT = '16a55b2a349361ff88c03788f93e1e966e5d689605d044fef722ddde0014df10745553444d';
 const BASE = 'https://cardano-preprod.blockfrost.io/api/v0';
+/**
+ * Masumi V2 escrow script on Preprod. A collection moves USDM OUT of this
+ * script into the seller wallet. Matching merely "inbound USDM" also matches
+ * the faucet transaction that funded the wallet, which would put a dispenser
+ * payout in the submission as proof of a customer payment.
+ */
+const ESCROW_SCRIPT = process.env.ESCROW_SCRIPT_ADDRESS
+	?? 'addr_test1wzs4e6wc95hkwezlccjw9mdvq0r0rsgx6zk34avptga3ftgn37w4g';
 
 function loadEnv() {
 	if (!existsSync('.env.local')) return;
@@ -64,7 +72,8 @@ async function main() {
 			.flatMap((o) => o.amount)
 			.filter((a) => a.unit === USDM_UNIT)
 			.reduce((sum, a) => sum + BigInt(a.quantity), 0n);
-		if (received > 0n) {
+		const fromEscrow = utxos.inputs.some((i) => i.address === ESCROW_SCRIPT);
+		if (received > 0n && fromEscrow) {
 			const tx = await bf(`/txs/${t.tx_hash}`, key);
 			collections.push({
 				txHash: t.tx_hash,
