@@ -8,6 +8,7 @@
 
 [**Landing page**](https://token-origins-landing.vercel.app) ·
 [**Paid call on-chain**](https://preprod.cardanoscan.io/transaction/2c499142236b5a1c4db2e0aaef1e318a1d9ba8d931ba4cb6511cf4c1d9966c83) ·
+[**Writeup**](docs/WRITEUP.md) ·
 [**Product thesis**](docs/PRODUCT.md) ·
 [**Deploy**](docs/DEPLOY.md)
 
