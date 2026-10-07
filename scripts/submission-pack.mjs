@@ -58,13 +58,21 @@ if (addr) {
 			.flatMap((o) => o.amount)
 			.filter((a) => a.unit === USDM_UNIT)
 			.reduce((s, a) => s + BigInt(a.quantity), 0n);
-		// Must come out of the escrow script, not merely in from somewhere else.
+		// Net, not gross: the seller's own funds appear as inputs and return as
+		// change on the result-hash submission, which gross matching reported as
+		// a collection. A collection leaves the seller holding more than before.
+		const spentBySeller = u.inputs
+			.filter((i) => i.address === addr)
+			.flatMap((i) => i.amount)
+			.filter((a) => a.unit === USDM_UNIT)
+			.reduce((s, a) => s + BigInt(a.quantity), 0n);
+		const net = got - spentBySeller;
 		const fromEscrow = u.inputs.some((i) => i.address === ESCROW_SCRIPT);
-		if (got > 0n && fromEscrow) {
+		if (net > 0n && fromEscrow) {
 			const full = await bf(`/txs/${t.tx_hash}`);
 			collection = {
 				txHash: t.tx_hash,
-				usdmReceived: got.toString(),
+				usdmReceived: net.toString(),
 				blockHeight: t.block_height,
 				blockTime: full ? new Date(full.block_time * 1000).toISOString() : null,
 			};

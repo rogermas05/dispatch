@@ -72,14 +72,24 @@ async function main() {
 			.flatMap((o) => o.amount)
 			.filter((a) => a.unit === USDM_UNIT)
 			.reduce((sum, a) => sum + BigInt(a.quantity), 0n);
+		// Net, not gross. The seller's own funds routinely appear as inputs and
+		// return as change — the result-hash submission does exactly that, and
+		// matching gross receipts reported it as a collection. A collection is a
+		// transaction after which the seller holds MORE USDM than before.
+		const inFromSeller = utxos.inputs
+			.filter((i) => i.address === address)
+			.flatMap((i) => i.amount)
+			.filter((a) => a.unit === USDM_UNIT)
+			.reduce((s, a) => s + BigInt(a.quantity), 0n);
+		const net = received - inFromSeller;
 		const fromEscrow = utxos.inputs.some((i) => i.address === ESCROW_SCRIPT);
-		if (received > 0n && fromEscrow) {
+		if (net > 0n && fromEscrow) {
 			const tx = await bf(`/txs/${t.tx_hash}`, key);
 			collections.push({
 				txHash: t.tx_hash,
 				blockHeight: t.block_height,
 				blockTime: new Date(tx.block_time * 1000).toISOString(),
-				usdmReceived: received.toString(),
+				usdmReceived: net.toString(),
 				feesLovelace: tx.fees,
 			});
 		}
