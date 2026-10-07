@@ -52,6 +52,9 @@ Cold calls, sales calls, or anything in bulk. You call people and places on beha
 Pretend to be human on a call. If asked, you say you're an AI.
 Go past what they authorized, however sensible it seems in the moment.
 
+MONEY
+If payments are on, they pay for calls from a prepaid balance. When they ask to top up, add money, or for a payment link, use send_top_up_link — the link goes out as its own message, so just say it's there.
+
 This is a test setup — the only number reachable is the one texting you. Silly requests are fine. Don't lecture, don't refuse things for being pointless.`;
 
 
@@ -83,6 +86,14 @@ const TOOLS: Anthropic.Tool[] = [
 	},
 ];
 
+/** Only offered when payments are on; without a balance there is nothing to top up. */
+const TOP_UP_TOOL: Anthropic.Tool = {
+	name: 'send_top_up_link',
+	description:
+		'Text them a Stripe payment link to add funds to their prepaid balance. Use when they ask to top up, add money, or for a payment link. Returns their current balance.',
+	input_schema: { type: 'object', properties: {} },
+};
+
 export interface Conversation {
 	messages: Anthropic.MessageParam[];
 	/** Quotes given but not yet accepted, by job id. They expire at payByTime. */
@@ -108,7 +119,7 @@ export async function respond(convo: Conversation, userText: string, deps: Agent
 			model: MODEL,
 			max_tokens: 1024,
 			system: SYSTEM,
-			tools: TOOLS,
+			tools: deps.billing ? [...TOOLS, TOP_UP_TOOL] : TOOLS,
 			messages: convo.messages,
 		});
 		convo.messages.push({ role: 'assistant', content: res.content });
@@ -122,38 +133,11 @@ export async function respond(convo: Conversation, userText: string, deps: Agent
 				.trim();
 		}
 
-		let result: string;
-		const args = toolUse.input as {
-			to: string;
-			objective: string;
-			authorization: string;
-			context?: string;
-			on_behalf_of?: string;
-		};
-
-		if (allowed && !allowed.has(args.to)) {
-			// Refused before quoting, not after. The allowlist is what separates a
-			// demo from an accidental robocall.
-			result = `REFUSED: ${args.to} is not on the allowed-numbers list, so nothing was quoted and no call was placed. Tell them you can only call approved numbers right now.`;
-		} else {
-			const billing = deps.billing;
-			const said = res.content.filter((b): b is Anthropic.TextBlock => b.type === 'text').map((b) => b.text).join('').trim();
-			if (said) await deps.notify(said);
-			try {
-				// Quote and accept in one go. Splitting them across two messages was
-				// a turn of friction for a price measured in cents; the number is
-				// still said out loud before any money moves.
-				// His billing path, plus onBehalfOf so the greeting still opens with
-				// who the call is for rather than what is on the other end.
-				const quote = await quoteCall({ ...args, onBehalfOf: args.on_behalf_of });
-				result = billing
-					? await chargeAndRun(quote, billing, toolUse.id, deps.notify)
-					: await run(quote, deps.notify);
-			} catch (err) {
-				billing?.refund(toolUse.id);
-				result = `The call failed: ${err instanceof Error ? err.message : String(err)}. Tell them plainly, and that they are not charged for a call that did not happen.`;
-			}
-		}
+		const said = res.content.filter((b): b is Anthropic.TextBlock => b.type === 'text').map((b) => b.text).join('').trim();
+		const result =
+			toolUse.name === TOP_UP_TOOL.name && deps.billing
+				? await sendTopUp(deps.billing)
+				: await placeCall(toolUse, said, deps);
 
 		convo.messages.push({
 			role: 'user',
@@ -161,6 +145,48 @@ export async function respond(convo: Conversation, userText: string, deps: Agent
 		});
 	}
 	return "Something went wrong on my end and I couldn't finish that. Try again?";
+}
+
+async function sendTopUp(billing: Billing): Promise<string> {
+	try {
+		await billing.sendTopUpLink();
+		return `SENT: a payment link was just texted to them as its own message. Their balance is ${dollars(billing.balanceCents())}. Tell them in one line to tap it, and that you'll text when the money lands.`;
+	} catch (err) {
+		return `The payment link could not be created: ${err instanceof Error ? err.message : String(err)}. Tell them plainly and to try again in a bit.`;
+	}
+}
+
+async function placeCall(toolUse: Anthropic.ToolUseBlock, said: string, deps: AgentDeps): Promise<string> {
+	const args = toolUse.input as {
+		to: string;
+		objective: string;
+		authorization: string;
+		context?: string;
+		on_behalf_of?: string;
+	};
+
+	if (allowed && !allowed.has(args.to)) {
+		// Refused before quoting, not after. The allowlist is what separates a
+		// demo from an accidental robocall.
+		return `REFUSED: ${args.to} is not on the allowed-numbers list, so nothing was quoted and no call was placed. Tell them you can only call approved numbers right now.`;
+	}
+
+	const billing = deps.billing;
+	if (said) await deps.notify(said);
+	try {
+		// Quote and accept in one go. Splitting them across two messages was
+		// a turn of friction for a price measured in cents; the number is
+		// still said out loud before any money moves.
+		// His billing path, plus onBehalfOf so the greeting still opens with
+		// who the call is for rather than what is on the other end.
+		const quote = await quoteCall({ ...args, onBehalfOf: args.on_behalf_of });
+		return billing
+			? await chargeAndRun(quote, billing, toolUse.id, deps.notify)
+			: await run(quote, deps.notify);
+	} catch (err) {
+		billing?.refund(toolUse.id);
+		return `The call failed: ${err instanceof Error ? err.message : String(err)}. Tell them plainly, and that they are not charged for a call that did not happen.`;
+	}
 }
 
 /**
