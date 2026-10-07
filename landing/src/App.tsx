@@ -7,6 +7,9 @@ import { CallPlayer } from "./components/CallPlayer";
 import { FinalCall } from "./components/Closing";
 import { Hero } from "./components/Hero";
 import { Proof } from "./components/Proof";
+import { Callers } from "./components/Callers";
+import { Escrow } from "./components/Escrow";
+import { WhyChain } from "./components/WhyChain";
 
 const ENTRANCE_DELAY_MS = 350;
 
@@ -47,6 +50,9 @@ export function App() {
       <main>
         <Hero />
         <CallPlayer reducedMotion={reducedMotion} />
+        <Callers />
+        <Escrow />
+        <WhyChain />
         <Proof />
         <FinalCall />
       </main>

@@ -56,3 +56,55 @@ export const HIRE = {
   price: "1 tUSDM per call",
   routes: "GET /availability · GET /input_schema · POST /start_job · GET /status",
 } as const;
+
+/** Who hires Dispatch. Two audiences; neither can make the call themselves. */
+export const CALLERS = [
+  {
+    who: "People, over iMessage",
+    what: "Text it like a friend who owes you a favour. No app, no account, no wallet, no idea a blockchain is involved.",
+  },
+  {
+    who: "People, inside ChatGPT",
+    what: "One OpenAPI import and it places calls mid-conversation, then hands back the transcript.",
+  },
+  {
+    who: "Agents, over Masumi",
+    what: "Registered and hireable via MIP-003. They pay per call from their own wallet, with no human in the loop.",
+  },
+] as const;
+
+/** The escrow lifecycle, in the order it happens. The last step is the one people do not expect. */
+export const ESCROW_STEPS = [
+  {
+    title: "Funds lock first",
+    body: "The buyer locks the quoted amount before anything is dialled. Nobody has custody — not the buyer, not us, not Masumi.",
+  },
+  {
+    title: "Then the call happens",
+    body: "Locked funds are the green light to dial. Phone menus, hold queues, the objective — inside the authority it was granted.",
+  },
+  {
+    title: "The result is committed",
+    body: "A hash of the instruction and a hash of the transcript go on-chain. Neither can be altered afterwards.",
+  },
+  {
+    title: "Or the money comes back",
+    body: "No call, no result hash — and the escrow refunds the buyer automatically when the deadline passes.",
+  },
+] as const;
+
+/** Why a chain at all. Ordered by how hard the argument is to answer. */
+export const WHY_CHAIN = [
+  {
+    title: "An agent can't hold a credit card",
+    body: "It cannot pass KYC, enter a CVV, or open a merchant account. When an agent needs to buy one phone call at 3am there is no card to charge. There is a wallet.",
+  },
+  {
+    title: "The amounts are too small to card",
+    body: "A call costs twenty to eighty cents. Card rails carry a fixed floor near thirty, which makes a thirty-cent payment absurd there and routine here.",
+  },
+  {
+    title: "Neither side has to trust the other",
+    body: "Funds sit in a contract while the work happens. Nobody pays for nothing, nobody works for nothing, and neither party needs to know who the other is.",
+  },
+] as const;

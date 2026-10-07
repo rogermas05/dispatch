@@ -473,3 +473,68 @@
     opacity: 1;
   }
 }
+
+/* ─── Pitch beats: who hires it, how it is paid for, why a chain ───────────── */
+
+/* A plain responsive grid rather than fixed columns: three cards read as a row
+   on a laptop and stack cleanly when the page is projected in portrait. */
+.cards,
+.steps {
+  list-style: none;
+  margin: clamp(2rem, 4vw, 3rem) 0 0;
+  padding: 0;
+  display: grid;
+  gap: clamp(0.75rem, 1.4vw, 1.1rem);
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+}
+
+/* Steps are sequential, so they stay a single column and read top to bottom. */
+.steps {
+  grid-template-columns: 1fr;
+  max-width: 54rem;
+}
+
+.card,
+.step {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: clamp(1rem, 1.6vw, 1.35rem);
+  background: rgb(244 241 234 / 0.02);
+}
+
+.step {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: clamp(0.9rem, 2vw, 1.4rem);
+  align-items: start;
+}
+
+.step__index {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: var(--ink-3);
+  padding-top: 0.15rem;
+}
+
+.card__title {
+  font-size: clamp(1rem, 1.2vw, 1.1rem);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  margin: 0;
+}
+
+.card__body {
+  margin: 0.4rem 0 0;
+  font-size: clamp(0.9rem, 1vw, 0.97rem);
+  line-height: 1.55;
+  color: var(--ink-2);
+}
+
+.why__note {
+  margin: clamp(1.5rem, 3vw, 2.25rem) 0 0;
+  max-width: 44rem;
+  font-size: clamp(0.9rem, 1vw, 0.97rem);
+  line-height: 1.6;
+  color: var(--ink-3);
+}
