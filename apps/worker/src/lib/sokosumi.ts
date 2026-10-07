@@ -13,8 +13,11 @@ import { spawn } from 'node:child_process';
  * untrusted input and must not hold credentials that can do more than run tasks.
  */
 
+const API_BASE = 'https://api.preprod.sokosumi.com';
+
 export interface SokosumiTask {
 	id: string;
+	coworkerId?: string;
 	name?: string;
 	description?: string;
 	status: 'READY' | 'RUNNING' | 'COMPLETED' | 'INPUT_REQUIRED' | string;
@@ -46,7 +49,11 @@ export class SokosumiClient {
 	/**
 	 * Run the CLI and parse its JSON.
 	 *
-	 * Runtime commands take their Coworker key on stdin via --api-key-stdin.
+	 * Every call takes the Coworker key on stdin via --api-key-stdin. In a
+	 * container there is no stored OAuth session, so task reads cannot fall back
+	 * to it — and SOKOSUMI_API_KEY is rejected outright with "Coworker API keys
+	 * are not supported by the CLI", so stdin is the only route that works for
+	 * both reads and runtime calls.
 	 * SOKOSUMI_API_KEY does not work for them — the CLI looks for a key stored
 	 * against the specific Coworker and rejects the environment variable — and
 	 * stdin keeps the secret out of the process table, where an argv flag would
@@ -89,14 +96,29 @@ export class SokosumiClient {
 	 * This is a plain list, not a claim. There is no lease — two workers calling
 	 * this both see the same task. Deduplication is the journal's job.
 	 */
+	/**
+	 * Read Core directly rather than through the CLI.
+	 *
+	 * The CLI refuses a Coworker key for anything but runtime commands —
+	 * "Coworker API keys are not supported by the CLI" — and falls back to a
+	 * stored OAuth session, which exists on a developer laptop and does not
+	 * exist in a container. Core's REST API accepts the same key over Bearer
+	 * auth, so the deployed worker talks to it directly. This also drops an npx
+	 * subprocess from every poll.
+	 */
+	private async http<T>(path: string): Promise<T> {
+		const res = await fetch(`${API_BASE}${path}`, {
+			headers: { Authorization: `Bearer ${this.cfg.runtimeKey}` },
+		});
+		if (!res.ok) throw new Error(`sokosumi GET ${path} -> ${res.status}: ${(await res.text()).slice(0, 200)}`);
+		return (await res.json()) as T;
+	}
+
 	async readyTasks(): Promise<SokosumiTask[]> {
-		// `tasks list` rejects --personal: it reads the credential's default
-		// context, which for OAuth is already the Personal Workspace. Only
-		// runtime start/complete and a few setup commands take the flag.
-		const out = (await this.exec(['--preprod', 'tasks', 'list', '--json'], false)) as {
-			tasks?: SokosumiTask[];
-		};
-		return (out.tasks ?? []).filter((t) => t.status === 'READY');
+		const out = await this.http<{ data?: SokosumiTask[] }>('/v1/tasks');
+		return (out.data ?? []).filter(
+			(t) => t.status === 'READY' && (!t.coworkerId || t.coworkerId === this.cfg.coworkerId),
+		);
 	}
 
 	async start(taskId: string): Promise<RuntimeResult> {
@@ -119,10 +141,8 @@ export class SokosumiClient {
 
 	/** The task's authoritative brief, plus any human comments already on it. */
 	async describe(taskId: string): Promise<SokosumiTask> {
-		const out = (await this.exec(['--preprod', 'tasks', 'get', taskId, '--json'], false)) as
-			| { task?: SokosumiTask }
-			| SokosumiTask;
-		const task = (out as { task?: SokosumiTask }).task ?? (out as SokosumiTask);
+		const out = await this.http<{ data?: SokosumiTask } | SokosumiTask>(`/v1/tasks/${taskId}`);
+		const task = (out as { data?: SokosumiTask }).data ?? (out as SokosumiTask);
 		if (!task?.id) throw new Error(`tasks get returned no task for ${taskId}`);
 		return task;
 	}
