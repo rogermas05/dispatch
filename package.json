@@ -34,7 +34,8 @@
   "devDependencies": {
     "@masumi_network/sokosumi": "^1.0.4",
     "@railway/cli": "^5.63.4",
-    "playwright": "^1.63.0"
+    "playwright": "^1.63.0",
+    "vercel": "^62.7.0"
   },
   "private": true,
   "workspaces": [
