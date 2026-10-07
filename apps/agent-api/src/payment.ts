@@ -106,11 +106,19 @@ export class PaymentServiceClient {
 		return json.data;
 	}
 
-	/** Create the payment request whose terms the buyer locks funds against. */
-	async createPayment(job: { inputHash: string; identifierFromPurchaser: string; metadata?: string }): Promise<EscrowTerms> {
+	/**
+	 * Create the payment request whose terms the buyer locks funds against.
+	 * `price` and `windows` override the defaults for jobs that cost or take more
+	 * (research budgets, several calls).
+	 */
+	async createPayment(
+		job: { inputHash: string; identifierFromPurchaser: string; metadata?: string },
+		overrides: { price?: { unit: string; amount: string }; windows?: PaymentConfig['windows'] } = {},
+	): Promise<EscrowTerms> {
 		const start = this.now();
 		const at = (minutes: number) => new Date(start + minutes * MINUTE).toISOString();
-		const { windows } = this.cfg;
+		const windows = overrides.windows ?? this.cfg.windows;
+		const price = overrides.price ?? this.cfg.price;
 		const payment = await this.post<MpsPayment>('/payment', {
 			network: this.cfg.network,
 			agentIdentifier: this.cfg.agentIdentifier,
@@ -118,7 +126,7 @@ export class PaymentServiceClient {
 			...(this.cfg.paymentSourceType === 'Web3CardanoV2' ? { supportedPaymentSourceIndex: this.cfg.supportedPaymentSourceIndex } : {}),
 			inputHash: job.inputHash,
 			identifierFromPurchaser: job.identifierFromPurchaser,
-			...(this.cfg.price ? { RequestedFunds: [this.cfg.price] } : {}),
+			...(price ? { RequestedFunds: [price] } : {}),
 			payByTime: at(windows.payBy),
 			submitResultTime: at(windows.submitResult),
 			unlockTime: at(windows.unlock),
@@ -160,4 +168,24 @@ export class PaymentServiceClient {
 			submitResultHash: resultHash,
 		});
 	}
+}
+
+/**
+ * Stretch the escrow windows so a job's work fits before submitResultTime:
+ * pay-by, then research, then every call at its maximum length, then a margin.
+ * Later windows move by the same amount so the dispute period is unchanged.
+ */
+export function windowsForJob(
+	base: PaymentConfig['windows'],
+	job: { calls: number; maxDurationSeconds: number; researchMinutes: number },
+	marginMinutes = 10,
+): PaymentConfig['windows'] {
+	const needed = base.payBy + job.researchMinutes + job.calls * Math.ceil(job.maxDurationSeconds / 60) + marginMinutes;
+	const shift = Math.max(0, needed - base.submitResult);
+	return {
+		payBy: base.payBy,
+		submitResult: base.submitResult + shift,
+		unlock: base.unlock + shift,
+		externalDispute: base.externalDispute + shift,
+	};
 }

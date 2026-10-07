@@ -48,6 +48,8 @@ export interface CallOutcome extends CallResult {
 	artifacts: Record<string, string>;
 	/** What a human still has to do, if anything. */
 	humanFollowUp: string | null;
+	/** Whether the call achieved its objective. Drives "call until resolved" jobs. */
+	objectiveMet?: boolean;
 	/**
 	 * What we cannot prove. The protocol proves we delivered what we committed;
 	 * it cannot prove the other party told the truth.

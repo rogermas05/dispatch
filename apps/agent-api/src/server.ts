@@ -2,7 +2,8 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { randomUUID } from 'node:crypto';
 import { masumiInputHash, isValidPurchaserIdentifier } from './hash.js';
 import { availability, type HealthDeps } from './health.js';
-import { INPUT_SCHEMA, parseCallInput, type CallPolicy } from './input.js';
+import type { CallBrief } from '../../worker/src/lib/types.js';
+import { INPUT_SCHEMA, parseCallInput, type CallPolicy, type JobPlan } from './input.js';
 import type { EscrowTerms } from './payment.js';
 import type { JobStore } from './store.js';
 import { statusOf, type Job } from './types.js';
@@ -24,8 +25,8 @@ export { INPUT_SCHEMA } from './input.js';
 export interface ServerDeps extends HealthDeps {
 	store: JobStore;
 	policy: CallPolicy;
-	/** Registers the job with the payment service and returns escrow terms. */
-	createEscrow: (job: { inputHash: string; identifierFromPurchaser: string; jobId: string }) => Promise<EscrowTerms>;
+	/** Registers the job with the payment service and returns escrow terms priced and timed for its plan. */
+	createEscrow: (job: { inputHash: string; identifierFromPurchaser: string; jobId: string; plan: JobPlan; brief: CallBrief }) => Promise<EscrowTerms>;
 	agentIdentifier: () => string | null;
 	sellerVKey: () => string | null;
 	/** Echoed to buyers so their purchase targets the same payment source. */
@@ -86,7 +87,7 @@ export class AgentApi {
 		const jobId = randomUUID();
 		let terms: EscrowTerms;
 		try {
-			terms = await this.deps.createEscrow({ inputHash, identifierFromPurchaser: identifier, jobId });
+			terms = await this.deps.createEscrow({ inputHash, identifierFromPurchaser: identifier, jobId, plan: parsed.plan, brief: parsed.brief });
 		} catch (err) {
 			return { code: 502, payload: { error: `payment service rejected the job: ${err instanceof Error ? err.message : err}` } };
 		}

@@ -37,6 +37,13 @@ export interface AgentApiConfig {
 	sellerVKey: string | null;
 	runnerIntervalMs: number;
 	maxConcurrentCalls: number;
+	/** Null when research hiring is off (no agents, no buy key, or fixed pricing). */
+	research: {
+		agents: string[];
+		/** Spending-capped purchase key (`register-agent.mjs buyer-key`). */
+		buyKey: string;
+		timeoutMinutes: number;
+	} | null;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AgentApiConfig {
@@ -83,6 +90,20 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AgentApiConfig
 		}
 	}
 
+	// Research hiring spends the hirer's budget through a separately capped key, and
+	// only works when each job is priced individually (dynamic pricing).
+	const researchAgents = (env.DISPATCH_RESEARCH_AGENTS ?? '').split(',').map((a) => a.trim()).filter(Boolean);
+	const bad = researchAgents.filter((a) => !/^[0-9a-f]{57,250}$/i.test(a));
+	if (bad.length) throw new Error(`DISPATCH_RESEARCH_AGENTS has malformed agent identifiers: ${bad.join(', ')}`);
+	const research =
+		payment?.price && researchAgents.length && env.MPS_BUY_KEY
+			? { agents: researchAgents, buyKey: env.MPS_BUY_KEY, timeoutMinutes: int(env, 'RESEARCH_TIMEOUT_MINUTES', 10) }
+			: null;
+	if (research && payment) {
+		policy.maxResearchBudget = BigInt(toAtomic(env.RESEARCH_BUDGET_MAX_USDM || '2'));
+		if (env.MPS_BUY_KEY === payment.token) throw new Error('MPS_BUY_KEY must be its own spending-capped key, not the seller key');
+	}
+
 	return {
 		port: int(env, 'AGENT_API_PORT', 3013),
 		jobsDir: env.JOBS_DIR || join(process.cwd(), '.local', 'jobs'),
@@ -92,5 +113,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AgentApiConfig
 		sellerVKey: env.SELLER_VKEY || null,
 		runnerIntervalMs: int(env, 'RUNNER_INTERVAL_MS', 15_000),
 		maxConcurrentCalls: int(env, 'MAX_CONCURRENT_CALLS', 2) || 1,
+		research,
 	};
 }

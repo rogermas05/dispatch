@@ -1,8 +1,11 @@
-import { reportOutcome } from '../../worker/src/agent.js';
+import { planResearch, reportOutcome, synthesizeOutcomes } from '../../worker/src/agent.js';
 import { selectProvider } from '../../worker/src/call/select.js';
+import { PurchaseClient, RegistryClient, RemoteAgent } from './buyer/clients.js';
+import { runHire } from './buyer/hire.js';
 import { loadConfig } from './config.js';
+import { executeJob, type ExecuteDeps } from './execute.js';
 import { parseCallInput } from './input.js';
-import { PaymentServiceClient } from './payment.js';
+import { PaymentServiceClient, windowsForJob } from './payment.js';
 import { JobRunner } from './runner.js';
 import { AgentApi, createAgentApiServer } from './server.js';
 import { JobStore } from './store.js';
@@ -37,9 +40,18 @@ const api = new AgentApi({
 	modelHealthy: async () => Boolean(process.env.ANTHROPIC_API_KEY),
 	telephonyHealthy,
 	paymentServiceReady: async () => payments !== null,
-	createEscrow: async ({ inputHash, identifierFromPurchaser, jobId }) => {
-		if (!payments) throw new Error('payment service is not configured (PAYMENT_SERVICE_URL, MPS_PAY_KEY, AGENT_IDENTIFIER)');
-		return payments.createPayment({ inputHash, identifierFromPurchaser, metadata: JSON.stringify({ jobId }) });
+	createEscrow: async ({ inputHash, identifierFromPurchaser, jobId, plan, brief }) => {
+		if (!payments || !config.payment) throw new Error('payment service is not configured (PAYMENT_SERVICE_URL, MPS_PAY_KEY, AGENT_IDENTIFIER)');
+		// Price = base fee + whatever research budget the hirer granted; windows fit every planned call.
+		const price = config.payment.price
+			? { unit: config.payment.price.unit, amount: (BigInt(config.payment.price.amount) + plan.researchBudget).toString() }
+			: undefined;
+		const windows = windowsForJob(config.payment.windows, {
+			calls: plan.numbers.length,
+			maxDurationSeconds: brief.maxDurationSeconds,
+			researchMinutes: plan.researchBudget > 0n && config.research ? config.research.timeoutMinutes : 0,
+		});
+		return payments.createPayment({ inputHash, identifierFromPurchaser, metadata: JSON.stringify({ jobId }) }, { price, windows });
 	},
 	agentIdentifier: () => config.payment?.agentIdentifier ?? null,
 	sellerVKey: () => config.sellerVKey,
@@ -54,19 +66,52 @@ const api = new AgentApi({
 			: { paymentSourceType: 'Web3CardanoV2' },
 });
 
+// Research hires go through a separate, spending-capped buyer key on the same payment service.
+const buyer =
+	config.payment && config.research
+		? (() => {
+				const mps = { baseUrl: config.payment.baseUrl, token: config.research.buyKey, network: config.payment.network };
+				return { registry: new RegistryClient(mps), purchases: new PurchaseClient(mps) };
+			})()
+		: null;
+
+const executeDeps: ExecuteDeps = {
+	placeAndReport: async (brief) => reportOutcome(brief, await provider.place(brief)),
+	planResearch,
+	synthesize: synthesizeOutcomes,
+	researchAgents: config.research?.agents ?? [],
+	unit: config.payment?.price?.unit ?? '',
+	researchTimeoutMs: (config.research?.timeoutMinutes ?? 10) * 60_000,
+	...(buyer
+		? {
+				hire: (req, initial, save) =>
+					runHire(req, initial, {
+						lookup: (id) => buyer.registry.lookup(id),
+						remote: (baseUrl) => new RemoteAgent(baseUrl),
+						purchase: (terms, nonce, amount, metadata) => buyer.purchases.purchase(terms, nonce, amount, metadata),
+						resolvePurchase: (id) => buyer.purchases.resolve(id),
+						save,
+					}),
+			}
+		: {}),
+};
+
 const runner = payments
 	? new JobRunner({
 			store,
 			payments,
 			parse: parseCallInput,
 			policy: config.policy,
-			execute: async (brief) => reportOutcome(brief, await provider.place(brief)),
+			execute: (input) => executeJob(input, executeDeps),
 			maxConcurrentCalls: config.maxConcurrentCalls,
 		})
 	: null;
 
 const server = createAgentApiServer(api, config.operatorToken).listen(config.port, () => {
-	console.log(`[agent-api] MIP-003 listening on :${config.port}, telephony=${provider.name}, payments=${payments ? 'configured' : 'NOT configured'}`);
+	console.log(
+		`[agent-api] MIP-003 listening on :${config.port}, telephony=${provider.name}, payments=${payments ? 'configured' : 'NOT configured'}, ` +
+			`research=${config.research ? `${config.research.agents.length} agent(s)` : 'off'}`,
+	);
 	if (config.policy.allowedNumbers?.size === 0) {
 		console.warn('[agent-api] DISPATCH_ALLOWED_NUMBERS is empty: every start_job will be refused until numbers are allowed.');
 	}

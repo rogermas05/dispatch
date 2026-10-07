@@ -56,6 +56,18 @@ const outcomeSchema = z.object({
 		.transform((v) =>
 			typeof v === 'string' ? [v] : (v ?? []).map((x) => (typeof x === 'string' ? x : JSON.stringify(x))),
 		),
+	// Same tolerance: a missing or stringly answer must not fail a finished call.
+	objectiveMet: z
+		.union([z.boolean(), z.string(), z.null()])
+		.optional()
+		.transform((v) => v === true || v === 'true'),
+});
+
+const researchQuestionSchema = z.object({
+	question: z
+		.union([z.string(), z.null()])
+		.optional()
+		.transform((v) => (typeof v === 'string' && v.trim() ? v.trim() : null)),
 });
 
 function client(): Anthropic {
@@ -91,9 +103,10 @@ Return ONLY a JSON object: {to, objective, authorization, context, maxDurationSe
 
 const REPORT_SYSTEM = `You turn a phone call transcript into a deliverable.
 
-Return ONLY a JSON object: {summary, artifacts, humanFollowUp, caveats}.
+Return ONLY a JSON object: {summary, artifacts, humanFollowUp, caveats, objectiveMet}.
 
 - "summary" is one or two sentences on whether the objective was met.
+- "objectiveMet" is true only if the transcript shows the objective was achieved.
 - "artifacts" holds reference numbers, confirmation codes, names and commitments
   obtained. This is what makes the call reusable by whoever comes next.
 - "humanFollowUp" is what a person still has to do, or null.
@@ -119,6 +132,7 @@ export async function reportOutcome(brief: CallBrief, result: CallResult): Promi
 			...result,
 			summary: `Call to ${brief.to} did not connect (${result.status}). The objective was not pursued.`,
 			artifacts: {},
+			objectiveMet: false,
 			humanFollowUp: `Retry the call to ${brief.to}, or confirm the number is correct.`,
 			caveats: ['No conversation took place. Nothing about the objective was established.'],
 		};
@@ -141,4 +155,46 @@ export async function runBrief(
 	const brief = await parseBrief(task.name, task.description);
 	const result = await provider.place(brief);
 	return reportOutcome(brief, result);
+}
+
+const RESEARCH_SYSTEM = `You prepare a phone call that an AI agent is about to place for a client.
+
+Return ONLY a JSON object: {question}.
+
+Decide whether ONE piece of background research would materially change how the
+call goes: the right department or procedure, the relevant policy or rule, typical
+timelines, what a reasonable outcome looks like. If so, write that question so a
+research agent with web access can answer it in a few paragraphs, citing sources.
+Never ask it to contact anyone, and never include account numbers or personal data
+from the brief. If research would not change the call, return {"question": null}.`;
+
+/** The single research question worth paying for before this call, or null if none. */
+export async function planResearch(brief: CallBrief): Promise<string | null> {
+	const out = await structured(`Objective: ${brief.objective}\nAuthorization: ${brief.authorization}`, RESEARCH_SYSTEM, researchQuestionSchema);
+	return out.question;
+}
+
+const SYNTHESIS_SYSTEM = `You combine several phone calls placed for one job into one deliverable.
+
+Return ONLY a JSON object: {summary, artifacts, humanFollowUp, caveats, objectiveMet}.
+
+- When the calls were to different businesses for comparison, compare what each
+  offered (prices, dates, terms) and say which best meets the objective.
+- When the calls were attempts in sequence, say which call achieved the objective
+  or why none did.
+- "artifacts" keeps every reference number, quote and commitment, labelled by call.
+- Report only what the call reports support. Never infer an outcome not in them.`;
+
+export type Synthesis = Pick<CallOutcome, 'summary' | 'artifacts' | 'humanFollowUp' | 'caveats'> & { objectiveMet: boolean };
+
+/** Merge the per-call outcomes of a multi-call job into one deliverable. */
+export async function synthesizeOutcomes(
+	objective: string,
+	plan: 'compare' | 'until_resolved',
+	calls: Array<{ to: string; outcome: CallOutcome }>,
+): Promise<Synthesis> {
+	const reports = calls
+		.map((c, i) => `Call ${i + 1} to ${c.to} (${c.outcome.status}): ${c.outcome.summary}\nArtifacts: ${JSON.stringify(c.outcome.artifacts)}`)
+		.join('\n\n');
+	return structured(`Objective: ${objective}\nPlan: ${plan}\n\n${reports}`, SYNTHESIS_SYSTEM, outcomeSchema);
 }

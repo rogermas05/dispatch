@@ -113,6 +113,26 @@ docker build -t dispatch .
    `scripts/verify-seller-receipt.mjs`, never the payment service's own report.
 7. **Close the laptop and run another hire end to end.** That is Checkpoint 5.
 
+### Optional: let Dispatch hire research agents
+
+Dispatch can hire a research agent on Masumi before dialing, paid from a budget
+the hirer adds to the job (`research_budget_usdm`). To enable it:
+
+1. Fund the payment service's **Purchasing** wallet with tUSDM (for hires) and
+   test ADA (for fees).
+2. `... register-agent.mjs buyer-key` creates `MPS_BUY_KEY`, scoped to that wallet
+   and capped at `BUYER_SPEND_CAP_USDM` in total by the payment service itself.
+3. Pick fixed-price research agents from `npx sokosumi agents list --json`, check
+   their `/input_schema` takes a single prompt-like field, and list their agent
+   identifiers in `DISPATCH_RESEARCH_AGENTS`.
+4. Restart: the startup log says `research=N agent(s)`, and `/input_schema`
+   accepts `research_budget_usdm` up to `RESEARCH_BUDGET_MAX_USDM`.
+
+Every hire is quoted against the remaining budget, refuses dynamically priced
+agents, refuses to pay if the seller's input hash differs from ours (MIP-004),
+uses the research only if its hash matches the seller's on-chain commitment, and
+is reported in the result's `research` and `spend` fields.
+
 Never redeploy the agent API while a call is in progress: a call cut off by a
 restart is failed and never re-dialed, and the buyer is refunded after
 `submitResultTime`.

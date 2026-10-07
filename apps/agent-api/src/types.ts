@@ -1,4 +1,5 @@
 /** MIP-003: the agent API Masumi buyers talk to. */
+import type { JobWork } from './execute.js';
 
 export type JobStatus =
 	| 'awaiting_payment'
@@ -13,8 +14,8 @@ export type JobStatus =
  * happened remotely:
  *
  *   awaiting_payment      terms issued; waiting for a confirmed FundsLocked
- *   calling               about to dial / dialing. Found on restart, it is never
- *                         re-dialed: we may have reached a real person already.
+ *   calling               research and calls in progress (`work`). On restart the job
+ *                         resumes, but a call that was mid-dial is never re-dialed.
  *   result_ready          outcome and MIP-004 output hash saved, not yet submitted
  *   submitting            submit-result sent or about to be; restart re-reads chain state
  *   awaiting_confirmation submitted; waiting for a confirmed ResultSubmitted
@@ -57,6 +58,8 @@ export interface Job {
 	/** MIP-004 output hash of `result`, submitted on-chain. */
 	outputHash?: string;
 	lastOnChainState?: string | null;
+	/** Research and per-call progress, persisted after every step. */
+	work?: JobWork;
 	error?: string;
 }
 

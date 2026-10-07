@@ -18,11 +18,17 @@ export const DEFAULT_CALL_SECONDS = 900;
 const MIN_CALL_SECONDS = 60;
 const MAX_TEXT = 4000;
 const E164 = /^\+[1-9]\d{6,14}$/;
+/** One primary number plus up to four more per job. */
+export const MAX_CALLS = 5;
+const USDM_DECIMALS = 6;
+export const CALL_PLANS = ['compare', 'until_resolved'] as const;
+export type CallPlan = 'single' | (typeof CALL_PLANS)[number];
 
 export const RESULT_DESCRIPTION =
-	'The result is a JSON string: {status, summary, artifacts, humanFollowUp, caveats, durationSeconds, transcript}. ' +
-	'status is completed | unreachable | refused | escalated | timeout. artifacts holds reference numbers, names and ' +
-	'commitments obtained on the call; humanFollowUp is what a person still has to do, or null.';
+	'The result is a JSON string: {status, summary, artifacts, humanFollowUp, caveats, objectiveMet, calls, research, spend}. ' +
+	'status is completed | partial | unreachable | failed. artifacts holds reference numbers, quotes, names and commitments; ' +
+	'humanFollowUp is what a person still has to do, or null. calls lists every call with its full transcript; research is ' +
+	'the background Dispatch bought before dialing, if any.';
 
 export const INPUT_SCHEMA = {
 	input_data: [
@@ -32,8 +38,10 @@ export const INPUT_SCHEMA = {
 			name: 'What Dispatch does',
 			data: {
 				description:
-					'Dispatch places one outbound phone call to a business on your behalf, pursues your objective within the ' +
-					'authorization you give, waits on hold, and returns the transcript with a structured outcome. ' +
+					'Dispatch phones businesses on your behalf: it navigates menus, waits on hold, pursues your objective within ' +
+					'the authorization you give, and returns transcripts with a structured outcome. It can call several numbers ' +
+					'(compare quotes, or keep calling until resolved) and, with a research budget, hire a research agent on the ' +
+					'Masumi network to prepare before dialing. ' +
 					RESULT_DESCRIPTION,
 			},
 		},
@@ -74,6 +82,41 @@ export const INPUT_SCHEMA = {
 			validations: [{ validation: 'optional', value: 'true' }, { validation: 'max', value: String(MAX_TEXT) }],
 		},
 		{
+			id: 'additional_numbers',
+			type: 'textarea',
+			name: 'Additional numbers',
+			data: {
+				placeholder: '+14155550188, +14155550199',
+				description: `Up to ${MAX_CALLS - 1} more E.164 numbers, comma-separated. Repeat a number to allow a callback.`,
+			},
+			validations: [{ validation: 'optional', value: 'true' }, { validation: 'max', value: '200' }],
+		},
+		{
+			id: 'call_plan',
+			type: 'radio',
+			name: 'How to use several numbers',
+			data: {
+				values: [...CALL_PLANS],
+				default: 'until_resolved',
+				description:
+					'compare: call every number with the same objective and compare the answers (e.g. quotes). ' +
+					'until_resolved: call in order and stop once the objective is met. Ignored with a single number.',
+			},
+			validations: [{ validation: 'optional', value: 'true' }],
+		},
+		{
+			id: 'research_budget_usdm',
+			type: 'number',
+			name: 'Research budget (tUSDM)',
+			data: {
+				default: 0,
+				description:
+					'Extra tUSDM Dispatch may spend hiring a research agent before dialing (procedures, policies, what to ask for). ' +
+					'Added to the price; 0 or empty means no hiring. Every purchase is reported in the result.',
+			},
+			validations: [{ validation: 'optional', value: 'true' }, { validation: 'min', value: '0' }],
+		},
+		{
 			id: 'max_duration_seconds',
 			type: 'number',
 			name: 'Maximum call length (seconds)',
@@ -88,14 +131,40 @@ export const INPUT_SCHEMA = {
 	],
 } as const;
 
-const KNOWN_FIELDS = new Set(['to', 'objective', 'authorization', 'context', 'max_duration_seconds']);
+const KNOWN_FIELDS = new Set(['to', 'objective', 'authorization', 'context', 'max_duration_seconds', 'additional_numbers', 'call_plan', 'research_budget_usdm']);
 
 export interface CallPolicy {
 	/** E.164 numbers Dispatch may dial. null means unrestricted (mock telephony only). */
 	allowedNumbers: ReadonlySet<string> | null;
+	/** Largest research budget a hirer may grant, in atomic units. 0n disables research hiring. */
+	maxResearchBudget?: bigint;
 }
 
-export type ParsedInput = { ok: true; brief: CallBrief } | { ok: false; errors: string[] };
+/** What a job will do: which numbers, in what pattern, and what it may spend on research. */
+export interface JobPlan {
+	numbers: string[];
+	strategy: CallPlan;
+	/** Atomic tUSDM the hirer granted for research hires; added to the price. */
+	researchBudget: bigint;
+}
+
+export type ParsedInput = { ok: true; brief: CallBrief; plan: JobPlan } | { ok: false; errors: string[] };
+
+/** Decimal tUSDM → atomic units, or null if not a valid non-negative amount with at most 6 decimals. */
+function usdmToAtomic(raw: unknown): bigint | null {
+	const text = typeof raw === 'number' ? String(raw) : typeof raw === 'string' ? raw.trim() : '';
+	if (!/^\d+(\.\d{1,6})?$/.test(text)) return null;
+	const [whole, fraction = ''] = text.split('.');
+	return BigInt(whole!) * 10n ** BigInt(USDM_DECIMALS) + BigInt(fraction.padEnd(USDM_DECIMALS, '0'));
+}
+
+/** Form UIs may send a radio/option answer as a string, an array, or an index into `values`. */
+function readCallPlan(raw: unknown): (typeof CALL_PLANS)[number] | null | undefined {
+	if (raw === undefined || raw === null || raw === '') return undefined;
+	const value = Array.isArray(raw) ? raw[0] : raw;
+	if (typeof value === 'number') return CALL_PLANS[value] ?? null;
+	return CALL_PLANS.find((p) => p === String(value).trim()) ?? null;
+}
 
 function text(value: unknown): string | null {
 	return typeof value === 'string' ? value.trim() : null;
@@ -135,9 +204,37 @@ export function parseCallInput(input: Record<string, unknown>, policy: CallPolic
 		errors.push(`max_duration_seconds must be a whole number between ${MIN_CALL_SECONDS} and ${MAX_CALL_SECONDS}`);
 	}
 
+	const additional =
+		input.additional_numbers === undefined || input.additional_numbers === null
+			? []
+			: typeof input.additional_numbers === 'string'
+				? input.additional_numbers.split(',').map((n) => n.trim()).filter(Boolean)
+				: null;
+	if (additional === null) {
+		errors.push('additional_numbers must be a comma-separated string of E.164 numbers');
+	} else {
+		if (additional.length > MAX_CALLS - 1) errors.push(`additional_numbers allows at most ${MAX_CALLS - 1} numbers`);
+		for (const n of additional) {
+			if (!E164.test(n)) errors.push(`additional number ${n} is not E.164`);
+			else if (policy.allowedNumbers && !policy.allowedNumbers.has(n)) errors.push(`additional number ${n} is not a number Dispatch is permitted to call`);
+		}
+	}
+
+	const plan = readCallPlan(input.call_plan);
+	if (plan === null) errors.push(`call_plan must be one of: ${CALL_PLANS.join(', ')}`);
+
+	const budget = input.research_budget_usdm === undefined || input.research_budget_usdm === null || input.research_budget_usdm === '' ? 0n : usdmToAtomic(input.research_budget_usdm);
+	const maxBudget = policy.maxResearchBudget ?? 0n;
+	if (budget === null) errors.push('research_budget_usdm must be a non-negative amount with at most 6 decimals');
+	else if (budget > maxBudget) {
+		errors.push(maxBudget === 0n ? 'research hiring is not enabled on this Dispatch instance; omit research_budget_usdm' : `research_budget_usdm may be at most ${Number(maxBudget) / 1e6}`);
+	}
+
 	if (errors.length) return { ok: false, errors };
+	const numbers = [to!, ...(additional ?? [])];
 	return {
 		ok: true,
+		plan: { numbers, strategy: numbers.length === 1 ? 'single' : (plan ?? 'until_resolved'), researchBudget: budget ?? 0n },
 		brief: {
 			to: to!,
 			objective: objective!,

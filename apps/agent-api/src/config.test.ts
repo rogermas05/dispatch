@@ -44,4 +44,19 @@ describe('loadConfig', () => {
 	it('with mock telephony, numbers are unrestricted because nothing is dialed', () => {
 		expect(loadConfig({}).policy.allowedNumbers).toBeNull();
 	});
+
+	it('enables research only with agents, a separate buy key and dynamic pricing', () => {
+		const agent = 'c'.repeat(64);
+		const on = loadConfig({ ...paid, DISPATCH_RESEARCH_AGENTS: agent, MPS_BUY_KEY: 'buy' });
+		expect(on.research).toEqual({ agents: [agent], buyKey: 'buy', timeoutMinutes: 10 });
+		expect(on.policy.maxResearchBudget).toBe(2_000_000n);
+		expect(loadConfig({ ...paid, DISPATCH_RESEARCH_AGENTS: agent }).research).toBeNull();
+		expect(loadConfig({ ...paid, DISPATCH_RESEARCH_AGENTS: agent, MPS_BUY_KEY: 'buy', PRICING: 'fixed' }).research).toBeNull();
+	});
+	it('refuses to reuse the seller key for spending', () => {
+		expect(() => loadConfig({ ...paid, DISPATCH_RESEARCH_AGENTS: 'c'.repeat(64), MPS_BUY_KEY: 'k' })).toThrow(/own spending-capped key/);
+	});
+	it('rejects malformed research agent identifiers', () => {
+		expect(() => loadConfig({ ...paid, DISPATCH_RESEARCH_AGENTS: 'not-an-id', MPS_BUY_KEY: 'buy' })).toThrow(/malformed/);
+	});
 });

@@ -11,7 +11,11 @@ const valid = {
 describe('parseCallInput', () => {
 	it('builds a brief with defaults from the minimal valid input', () => {
 		const parsed = parseCallInput(valid, open);
-		expect(parsed).toEqual({ ok: true, brief: { ...valid, maxDurationSeconds: 900 } });
+		expect(parsed).toEqual({
+			ok: true,
+			brief: { ...valid, maxDurationSeconds: 900 },
+			plan: { numbers: [valid.to], strategy: 'single', researchBudget: 0n },
+		});
 	});
 
 	it('carries context and accepts a duration sent as a string by form-based callers', () => {
@@ -47,6 +51,44 @@ describe('parseCallInput', () => {
 	});
 });
 
+describe('multi-call and research inputs', () => {
+	const research = { allowedNumbers: null, maxResearchBudget: 2_000_000n };
+
+	it('plans several numbers, defaulting to until_resolved', () => {
+		const parsed = parseCallInput({ ...valid, additional_numbers: '+15550100188, +15550100142' }, open);
+		expect(parsed.ok && parsed.plan).toEqual({ numbers: ['+15550100142', '+15550100188', '+15550100142'], strategy: 'until_resolved', researchBudget: 0n });
+	});
+
+	it('accepts compare as a string, an array or an option index', () => {
+		for (const call_plan of ['compare', ['compare'], 0]) {
+			const parsed = parseCallInput({ ...valid, additional_numbers: '+15550100188', call_plan }, open);
+			expect(parsed.ok && parsed.plan.strategy).toBe('compare');
+		}
+	});
+
+	it('caps the number of calls and checks every number against the allowlist', () => {
+		const tooMany = parseCallInput({ ...valid, additional_numbers: Array(5).fill('+15550100188').join(',') }, open);
+		expect(!tooMany.ok && tooMany.errors.join()).toMatch(/at most 4/);
+		const blocked = parseCallInput({ ...valid, additional_numbers: '+15550100199' }, { allowedNumbers: new Set([valid.to]) });
+		expect(!blocked.ok && blocked.errors.join()).toMatch(/\+15550100199 is not a number Dispatch is permitted to call/);
+	});
+
+	it('converts the research budget to atomic units within the instance cap', () => {
+		const parsed = parseCallInput({ ...valid, research_budget_usdm: '1.5' }, research);
+		expect(parsed.ok && parsed.plan.researchBudget).toBe(1_500_000n);
+		expect(parseCallInput({ ...valid, research_budget_usdm: 3 }, research).ok).toBe(false);
+	});
+
+	it('refuses a research budget when hiring is disabled', () => {
+		const parsed = parseCallInput({ ...valid, research_budget_usdm: 1 }, open);
+		expect(!parsed.ok && parsed.errors.join()).toMatch(/not enabled/);
+	});
+
+	it('rejects an unknown call plan', () => {
+		expect(parseCallInput({ ...valid, call_plan: 'shout' }, open).ok).toBe(false);
+	});
+});
+
 describe('parseAllowlist', () => {
 	it('parses a comma-separated list', () => {
 		expect([...parseAllowlist(' +15550100142, +15550100187 ')]).toEqual(['+15550100142', '+15550100187']);
@@ -62,12 +104,12 @@ describe('parseAllowlist', () => {
 describe('INPUT_SCHEMA', () => {
 	const fields = INPUT_SCHEMA.input_data;
 	it('uses MIP-003 Attachment 01 input types only', () => {
-		const allowed = new Set(['none', 'text', 'textarea', 'number', 'tel', 'boolean', 'option', 'email', 'url']);
+		const allowed = new Set(['none', 'text', 'textarea', 'number', 'tel', 'boolean', 'option', 'radio', 'email', 'url']);
 		for (const f of fields) expect(allowed.has(f.type)).toBe(true);
 	});
-	it('marks context and duration optional, everything else required', () => {
-		const optional = fields.filter((f) => 'validations' in f && f.validations.some((v) => v.validation === 'optional')).map((f) => f.id);
-		expect(optional).toEqual(['context', 'max_duration_seconds']);
+	it('marks everything but the number, objective and authorization optional', () => {
+		const required = fields.filter((f) => f.type !== 'none' && !('validations' in f && f.validations.some((v) => v.validation === 'optional'))).map((f) => f.id);
+		expect(required).toEqual(['to', 'objective', 'authorization']);
 	});
 	it('tells callers that authorization is hashed on-chain', () => {
 		const field = fields.find((f) => f.id === 'authorization');

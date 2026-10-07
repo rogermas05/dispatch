@@ -1,4 +1,4 @@
-import type { CallBrief, CallOutcome } from '../../worker/src/lib/types.js';
+import type { ExecuteInput, JobOutcome } from './execute.js';
 import { canonicalize, masumiOutputHash } from './hash.js';
 import type { CallPolicy, ParsedInput } from './input.js';
 import type { PaymentState } from './payment.js';
@@ -23,8 +23,8 @@ export interface RunnerDeps {
 	};
 	parse: (input: Record<string, unknown>, policy: CallPolicy) => ParsedInput;
 	policy: CallPolicy;
-	/** Place the call and turn it into a deliverable. */
-	execute: (brief: CallBrief) => Promise<CallOutcome>;
+	/** Run the job's research and calls and produce the deliverable (see execute.ts). */
+	execute: (input: ExecuteInput) => Promise<JobOutcome>;
 	maxConcurrentCalls?: number;
 	now?: () => number;
 	log?: (message: string) => void;
@@ -64,10 +64,8 @@ export class JobRunner {
 	}
 
 	start(intervalMs = 15_000): void {
-		// Jobs left mid-call by a previous process are failed, not re-dialed.
-		for (const job of this.deps.store.list().filter((j) => j.phase === 'calling')) {
-			this.fail(job, 'interrupted during the call by a restart; not re-dialed. The escrow refunds the buyer after submitResultTime.');
-		}
+		// Jobs left in 'calling' by a previous process resume on the first tick;
+		// the executor marks any call that was mid-dial as interrupted, never re-dialing it.
 		this.timer = setInterval(() => void this.tick(), intervalMs);
 		void this.tick();
 	}
@@ -95,9 +93,8 @@ export class JobRunner {
 			case 'awaiting_payment':
 				return this.awaitPayment(job);
 			case 'calling':
-				// Only reachable for a job another process left behind mid-call.
-				this.fail(job, 'found mid-call without a live process; not re-dialed');
-				return;
+				// Only reachable for a job a previous process left behind: resume it.
+				return this.work(job);
 			case 'result_ready':
 				return this.submit(job);
 			case 'submitting':
@@ -122,31 +119,45 @@ export class JobRunner {
 			return;
 		}
 
+		return this.work(job);
+	}
+
+	/** Run (or resume) the job's research and calls, then hand the deliverable to submit(). */
+	private async work(job: Job): Promise<void> {
 		const parsed = this.deps.parse(job.inputData, this.deps.policy);
 		if (!parsed.ok) {
 			this.fail(job, `input no longer valid: ${parsed.errors.join('; ')}`);
 			return;
 		}
-		const brief = parsed.brief;
-		const latestStart = Number(job.submitResultTime) - SUBMIT_MARGIN_MS - brief.maxDurationSeconds * 1000;
-		if (this.now() > latestStart) {
-			this.fail(job, 'not enough time left to finish the call before submitResultTime; refusing to dial');
+		const mustFinishBy = Number(job.submitResultTime) - SUBMIT_MARGIN_MS;
+		if (job.phase === 'awaiting_payment' && this.now() + parsed.brief.maxDurationSeconds * 1000 > mustFinishBy) {
+			this.fail(job, 'not enough time left to finish a call before submitResultTime; refusing to dial');
 			return;
 		}
 		if (this.activeCalls >= (this.deps.maxConcurrentCalls ?? 2)) return; // picked up on a later tick
 
 		this.activeCalls += 1;
-		job = this.save(job, { phase: 'calling' });
-		let outcome: CallOutcome;
+		if (job.phase !== 'calling') job = this.save(job, { phase: 'calling' });
+		let outcome: JobOutcome;
 		try {
-			this.log(`${job.id}: funds locked, dialing`);
-			outcome = await this.deps.execute(brief);
+			this.log(`${job.id}: funds locked, working`);
+			outcome = await this.deps.execute({
+				brief: parsed.brief,
+				plan: parsed.plan,
+				work: job.work,
+				jobId: job.id,
+				mustFinishBy,
+				save: (work) => {
+					job = this.save(this.deps.store.get(job.id) ?? job, { work });
+				},
+			});
 		} catch (err) {
-			this.fail(job, `call could not be completed: ${err instanceof Error ? err.message : err}`);
+			this.fail(this.deps.store.get(job.id) ?? job, `job could not be completed: ${err instanceof Error ? err.message : err}`);
 			return;
 		} finally {
 			this.activeCalls -= 1;
 		}
+		job = this.deps.store.get(job.id) ?? job;
 
 		const result = canonicalize(outcome);
 		job = this.save(job, {

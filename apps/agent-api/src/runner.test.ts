@@ -2,7 +2,7 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it, expect, vi } from 'vitest';
-import type { CallBrief, CallOutcome } from '../../worker/src/lib/types.js';
+import type { ExecuteInput, JobOutcome } from './execute.js';
 import { canonicalize, masumiOutputHash } from './hash.js';
 import { parseCallInput } from './input.js';
 import type { PaymentState } from './payment.js';
@@ -14,16 +14,16 @@ const NOW = Date.parse('2026-10-07T00:00:00Z');
 const MIN = 60_000;
 const nonce = 'ab'.repeat(7);
 
-const outcome: CallOutcome = {
+const outcome: JobOutcome = {
 	status: 'completed',
-	durationSeconds: 120,
-	transcript: { turns: [{ speaker: 'other', text: 'Ticket BL-30982.', atSeconds: 3 }], text: 'other: Ticket BL-30982.' },
-	recordingUrl: null,
-	providerCallId: 'call-1',
 	summary: 'Redelivery booked.',
 	artifacts: { Ticket: 'BL-30982' },
 	humanFollowUp: null,
 	caveats: [],
+	objectiveMet: true,
+	calls: [],
+	research: null,
+	spend: { unit: 'usdm', budget: '0', spent: '0' },
 };
 
 function job(over: Partial<Job> = {}): Job {
@@ -48,7 +48,7 @@ const state = (over: Partial<PaymentState> = {}): PaymentState => ({
 	onChainState: null, resultHash: null, nextAction: null, errorNote: null, confirmed: false, ...over,
 });
 
-function setup(initial: Job, chain: PaymentState[], opts: { now?: number; execute?: (b: CallBrief) => Promise<CallOutcome> } = {}) {
+function setup(initial: Job, chain: PaymentState[], opts: { now?: number; execute?: (input: ExecuteInput) => Promise<JobOutcome> } = {}) {
 	const store = new JobStore(mkdtempSync(join(tmpdir(), 'runner-')));
 	store.put(initial);
 	let i = 0;
@@ -86,7 +86,11 @@ describe('JobRunner', () => {
 			state({ onChainState: 'ResultSubmitted', confirmed: true, resultHash: hash }),
 		]);
 		const afterCall = await step();
-		expect(execute).toHaveBeenCalledWith(expect.objectContaining({ to: '+15550100187', maxDurationSeconds: 600 }));
+		expect(execute).toHaveBeenCalledWith(expect.objectContaining({
+			brief: expect.objectContaining({ to: '+15550100187', maxDurationSeconds: 600 }),
+			plan: expect.objectContaining({ numbers: ['+15550100187'], strategy: 'single' }),
+			jobId: job().id,
+		}));
 		expect(afterCall).toMatchObject({ phase: 'awaiting_confirmation', result, outputHash: hash });
 		expect(payments.submitResult).toHaveBeenCalledWith('bc-1', hash);
 		expect((await step()).phase).toBe('completed');
@@ -110,7 +114,7 @@ describe('JobRunner', () => {
 		expect(execute).not.toHaveBeenCalled();
 	});
 
-	it('fails the job, without submitting, when the call itself errors', async () => {
+	it('fails the job, without submitting, when the work itself errors', async () => {
 		const { step, payments } = setup(job(), [state({ onChainState: 'FundsLocked', confirmed: true })], {
 			execute: async () => { throw new Error('telnyx 503'); },
 		});
@@ -118,13 +122,19 @@ describe('JobRunner', () => {
 		expect(payments.submitResult).not.toHaveBeenCalled();
 	});
 
-	it('never re-dials a job a previous process left mid-call', async () => {
-		const { runner, store, execute } = setup(job({ phase: 'calling' }), [state({ onChainState: 'FundsLocked', confirmed: true })]);
-		runner.start(60_000);
-		runner.stop();
-		await runner.idle();
-		expect(store.get(job().id)).toMatchObject({ phase: 'failed', error: expect.stringMatching(/not re-dialed/) });
-		expect(execute).not.toHaveBeenCalled();
+	it('resumes a job a previous process left in progress, handing the executor its saved work', async () => {
+		const work = { calls: [{ to: '+15550100187', state: 'dialing' as const }] };
+		const { step, execute } = setup(job({ phase: 'calling', work }), [state({ onChainState: 'FundsLocked', confirmed: true })]);
+		expect((await step()).phase).toBe('awaiting_confirmation');
+		expect(execute).toHaveBeenCalledWith(expect.objectContaining({ work }));
+	});
+
+	it('persists the executor\'s progress on the job as it goes', async () => {
+		const { step, store } = setup(job(), [state({ onChainState: 'FundsLocked', confirmed: true })], {
+			execute: async (input) => { input.save({ calls: [{ to: '+15550100187', state: 'dialing' }] }); return outcome; },
+		});
+		await step();
+		expect(store.get(job().id)?.work).toEqual({ calls: [{ to: '+15550100187', state: 'dialing' }] });
 	});
 
 	it('after a restart mid-submit, reads the chain instead of submitting twice', async () => {
@@ -143,7 +153,7 @@ describe('JobRunner', () => {
 	it('runs one call per job even if ticks overlap', async () => {
 		let release!: () => void;
 		const { runner, execute } = setup(job(), [state({ onChainState: 'FundsLocked', confirmed: true })], {
-			execute: () => new Promise((r) => { release = () => r(outcome); }),
+			execute: () => new Promise<JobOutcome>((r) => { release = () => r(outcome); }),
 		});
 		await runner.tick();
 		await new Promise((r) => setTimeout(r, 10));

@@ -5,6 +5,7 @@
  *
  *   node scripts/register-agent.mjs inspect    show the seller wallet and V2 payment source that will be used
  *   node scripts/register-agent.mjs key        create the scoped pay key the agent API uses (MPS_PAY_KEY)
+ *   node scripts/register-agent.mjs buyer-key  create the spending-capped key Dispatch hires other agents with (MPS_BUY_KEY)
  *   node scripts/register-agent.mjs register   mint the registry entry with apiBaseUrl = AGENT_API_PUBLIC_URL
  *   node scripts/register-agent.mjs status     poll until RegistrationConfirmed; prints AGENT_IDENTIFIER
  *
@@ -20,14 +21,15 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 
 const STATE_PATH = '.local/registration.json';
 const KEY_PATH = '.local/mps-pay-key.env';
+const BUY_KEY_PATH = '.local/mps-buy-key.env';
 const NETWORK = process.env.NETWORK === 'Mainnet' ? 'Mainnet' : 'Preprod';
 
 const LISTING = {
 	name: 'Dispatch',
 	// 250 characters max; this is what buyers and searching agents read.
 	description:
-		'Places a phone call to a business for you or your agent: navigates menus, waits on hold, pursues your objective within your stated authorization, and returns the transcript with reference numbers and next steps.',
-	Tags: ['phone-call', 'voice', 'telephony', 'calls', 'customer-support', 'hold-time', 'ivr', 'agent-tool'],
+		'Phones businesses for you or your agent: navigates menus, waits on hold, works your objective within your authorization. Can compare several numbers and hire research agents first. Returns transcripts + reference numbers.',
+	Tags: ['phone-call', 'voice', 'telephony', 'calls', 'customer-support', 'hold-time', 'ivr', 'quotes', 'agent-tool'],
 	Capability: { name: process.env.MODEL_ID || 'claude-sonnet-5-5', version: '1' },
 	Author: { name: process.env.REGISTRY_AUTHOR || 'Dispatch' },
 };
@@ -114,6 +116,45 @@ async function createKey() {
 	console.log(`created scoped pay key ${key.id} (read+pay, ${NETWORK}, seller wallet only). Token written to ${KEY_PATH}; set it as MPS_PAY_KEY.`);
 }
 
+/**
+ * The key Dispatch spends with when it hires other agents. Scoped to the
+ * purchasing wallet and capped by the payment service itself, so no bug in
+ * Dispatch can spend past BUYER_SPEND_CAP_USDM in total.
+ */
+async function createBuyerKey() {
+	if (state.buyKeyId) return console.log(`buyer key already created (${state.buyKeyId}); it is in ${BUY_KEY_PATH}`);
+	if (state.buyKeyPending) throw new Error('a previous buyer-key creation had an uncertain outcome; inspect API keys before retrying');
+	const unit = need('USDM_UNIT');
+	const capUsdm = process.env.BUYER_SPEND_CAP_USDM || '10';
+	if (!/^\d+(\.\d{1,6})?$/.test(capUsdm)) throw new Error('BUYER_SPEND_CAP_USDM must be a decimal tUSDM amount');
+	const [whole, fraction = ''] = capUsdm.split('.');
+	const capAtomic = (BigInt(whole) * 1_000_000n + BigInt(fraction.padEnd(6, '0'))).toString();
+	const { Wallets = [] } = await mps('/wallet/list?walletType=Purchasing&take=10');
+	if (Wallets.length !== 1) throw new Error(`expected exactly one Purchasing wallet, found ${Wallets.length}; fund one in the MPS admin UI`);
+	state.buyKeyPending = true;
+	save();
+	const key = await mps('/api-key', {
+		usageLimited: 'true',
+		UsageCredits: [{ unit, amount: capAtomic }],
+		NetworkLimit: [NETWORK],
+		ChainIdLimit: [],
+		canRead: true,
+		canPay: true,
+		canAdmin: false,
+		walletScopeEnabled: true,
+		WalletScopeHotWalletIds: [Wallets[0].id],
+		x402WalletScopeEnabled: true,
+		X402WalletScopeEvmWalletIds: [],
+	});
+	state.buyKeyId = key.id;
+	state.buyKeyPending = false;
+	state.buyKeyCap = { unit, amount: capAtomic };
+	save();
+	if (typeof key.token !== 'string' || key.token.startsWith('*')) throw new Error(`key ${key.id} created but its token was not revealed; rotate it in the admin UI`);
+	writeFileSync(BUY_KEY_PATH, `MPS_BUY_KEY=${key.token}\n`, { mode: 0o600 });
+	console.log(`created buyer key ${key.id}: purchasing wallet ${Wallets[0].walletAddress}, capped at ${capUsdm} tUSDM in total. Token in ${BUY_KEY_PATH}; set it as MPS_BUY_KEY.`);
+}
+
 async function register() {
 	if (state.registrationId) return console.log(`already registered (${state.registrationId}); run "status"`);
 	if (state.registrationPending) throw new Error('a previous registration had an uncertain outcome; run "status" and inspect the registry before retrying');
@@ -177,7 +218,7 @@ async function status() {
 	}
 }
 
-const commands = { inspect, key: createKey, register, status };
+const commands = { inspect, key: createKey, 'buyer-key': createBuyerKey, register, status };
 const command = commands[process.argv[2]];
 if (!command) {
 	console.error(`usage: node scripts/register-agent.mjs <${Object.keys(commands).join('|')}>`);
